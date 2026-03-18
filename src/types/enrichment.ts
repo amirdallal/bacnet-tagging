@@ -25,7 +25,7 @@ export interface EnrichmentResult {
   alternativeMatches: AlternativeMatch[];
   flaggedForReview: boolean;
   reviewReason: string | null;
-  enrichmentSource: 'pattern' | 'cache' | 'ai-ollama' | 'ai-claude' | 'manual';
+  enrichmentSource: 'pattern' | 'cache' | 'ai-ollama' | 'ai-claude' | 'manual' | 'unit-fallback';
   processingTimeMs: number;
 }
 

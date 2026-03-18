@@ -1,0 +1,525 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>BACnet Semantic Intelligence</title>
+<style>
+:root{
+  --bg:#f1f5f9;--sidebar:#1e293b;--sidebar-hover:#334155;--sidebar-text:#94a3b8;
+  --accent:#0d9488;--accent-light:#14b8a6;--accent-bg:rgba(13,148,136,.08);
+  --card:#fff;--card-border:#e2e8f0;--text:#334155;--text-muted:#64748b;--text-light:#94a3b8;
+  --success:#059669;--warning:#d97706;--danger:#dc2626;--info:#2563eb;
+  --radius:10px;--shadow:0 1px 3px rgba(0,0,0,.06),0 1px 2px rgba(0,0,0,.04);
+  --shadow-lg:0 10px 25px rgba(0,0,0,.08);
+}
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:'Inter',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:var(--bg);min-height:100vh;color:var(--text);font-size:13px}
+/* Layout */
+.app{display:grid;grid-template-columns:300px 1fr;grid-template-rows:56px 1fr;height:100vh}
+.topbar{grid-column:1/-1;background:var(--sidebar);display:flex;align-items:center;padding:0 24px;gap:16px;border-bottom:1px solid #334155}
+.topbar h1{color:#f8fafc;font-size:16px;font-weight:600;letter-spacing:-.3px}
+.topbar .dot{width:6px;height:6px;border-radius:50%;background:var(--accent)}
+.topbar .badge{background:var(--accent);color:#fff;font-size:10px;padding:2px 8px;border-radius:10px;font-weight:600}
+.topbar-right{margin-left:auto;display:flex;gap:12px;align-items:center}
+.topbar-stat{color:var(--sidebar-text);font-size:11px}
+.topbar-stat b{color:#f8fafc}
+/* Sidebar */
+.sidebar{background:var(--sidebar);overflow-y:auto;padding:16px;border-right:1px solid #334155}
+.sidebar::-webkit-scrollbar{width:4px}
+.sidebar::-webkit-scrollbar-thumb{background:#475569;border-radius:2px}
+.upload-zone{border:2px dashed #475569;border-radius:var(--radius);padding:24px 12px;text-align:center;cursor:pointer;transition:.2s;margin-bottom:12px}
+.upload-zone:hover,.upload-zone.dragover{border-color:var(--accent);background:rgba(13,148,136,.05)}
+.upload-icon{font-size:28px;margin-bottom:6px;opacity:.7}
+.upload-text{color:var(--sidebar-text);font-size:12px}
+.upload-text strong{color:#cbd5e1}
+input[type="file"]{display:none}
+.site-input{width:100%;padding:8px 12px;border:1px solid #475569;border-radius:6px;background:#0f172a;color:#e2e8f0;font-size:12px;margin-bottom:8px}
+.site-input:focus{outline:none;border-color:var(--accent)}
+.site-input::placeholder{color:#64748b}
+.btn{padding:8px 16px;border:none;border-radius:6px;font-weight:600;cursor:pointer;transition:.15s;font-size:12px;display:inline-flex;align-items:center;gap:6px;line-height:1.4}
+.btn:disabled{opacity:.35;cursor:not-allowed}
+.btn-primary{background:var(--accent);color:#fff}.btn-primary:hover:not(:disabled){background:var(--accent-light)}
+.btn-sm{padding:4px 10px;font-size:11px;border-radius:4px;font-weight:500}
+.btn-claude{background:linear-gradient(135deg,#6366f1,#8b5cf6);color:#fff}.btn-claude:hover:not(:disabled){background:linear-gradient(135deg,#4f46e5,#7c3aed)}
+.btn-edit{background:#475569;color:#e2e8f0}.btn-edit:hover{background:#64748b}
+.btn-success{background:var(--success);color:#fff}.btn-success:hover{background:#047857}
+.btn-outline{background:transparent;border:1px solid var(--card-border);color:var(--text)}.btn-outline:hover{background:#f8fafc}
+.btn-ghost{background:transparent;color:var(--sidebar-text);border:1px solid #475569}.btn-ghost:hover{background:#334155;color:#e2e8f0}
+.btn-block{width:100%}
+/* Device list */
+.section-label{color:var(--sidebar-text);font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.8px;margin:16px 0 8px;padding:0 4px}
+.dev-item{padding:10px 12px;border-radius:8px;cursor:pointer;transition:.15s;margin-bottom:4px;border:1px solid transparent}
+.dev-item:hover{background:var(--sidebar-hover)}
+.dev-item.selected{background:rgba(13,148,136,.15);border-color:rgba(13,148,136,.3)}
+.dev-name{color:#e2e8f0;font-weight:500;font-size:12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.dev-meta{color:var(--sidebar-text);font-size:10px;margin-top:2px}
+.dev-dots{display:flex;gap:4px;margin-top:6px}
+.dev-dots .mini-bar{height:3px;border-radius:2px;flex:1}
+/* Content */
+.content{padding:24px;overflow-y:auto}
+.content::-webkit-scrollbar{width:6px}
+.content::-webkit-scrollbar-thumb{background:#cbd5e1;border-radius:3px}
+/* Cards */
+.card{background:var(--card);border:1px solid var(--card-border);border-radius:var(--radius);padding:20px;box-shadow:var(--shadow)}
+.card+.card{margin-top:16px}
+.card-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:16px}
+.card-title{font-size:14px;font-weight:600;color:var(--text)}
+/* Tabs */
+.tabs{display:flex;gap:4px;margin-bottom:20px;background:#f1f5f9;border-radius:8px;padding:3px}
+.tab{padding:8px 16px;cursor:pointer;border:none;background:none;font-size:12px;font-weight:500;color:var(--text-muted);border-radius:6px;transition:.15s}
+.tab:hover{color:var(--text)}
+.tab.active{background:var(--card);color:var(--accent);box-shadow:var(--shadow);font-weight:600}
+.tab-content{display:none}.tab-content.active{display:block}
+/* Summary stats */
+.stats-row{display:grid;grid-template-columns:repeat(5,1fr);gap:12px;margin-bottom:20px}
+.stat-card{background:var(--card);border:1px solid var(--card-border);border-radius:var(--radius);padding:14px 16px;text-align:center}
+.stat-card.accent{border-color:var(--accent);background:var(--accent-bg)}
+.stat-num{font-size:24px;font-weight:700;line-height:1}
+.stat-num.c-total{color:var(--text)}.stat-num.c-high{color:var(--success)}.stat-num.c-med{color:var(--warning)}.stat-num.c-low{color:#ea580c}.stat-num.c-none{color:var(--danger)}
+.stat-label{font-size:10px;color:var(--text-muted);margin-top:4px;font-weight:500;text-transform:uppercase;letter-spacing:.5px}
+/* Filters */
+.filters{display:flex;gap:8px;margin-bottom:16px;flex-wrap:wrap;align-items:center}
+.filter-input{padding:7px 12px;border:1px solid var(--card-border);border-radius:6px;font-size:12px;background:var(--card);color:var(--text);min-width:220px}
+.filter-input:focus{outline:none;border-color:var(--accent);box-shadow:0 0 0 3px rgba(13,148,136,.1)}
+.filter-select{padding:7px 12px;border:1px solid var(--card-border);border-radius:6px;font-size:12px;background:var(--card);color:var(--text);cursor:pointer}
+.filter-select:focus{outline:none;border-color:var(--accent)}
+.count-label{font-size:11px;color:var(--text-muted);margin-left:auto}
+/* Table */
+.table-wrap{overflow-x:auto;max-height:480px;overflow-y:auto;border:1px solid var(--card-border);border-radius:var(--radius)}
+table{width:100%;border-collapse:collapse;font-size:12px}
+thead{position:sticky;top:0;z-index:1}
+th{background:#f8fafc;padding:10px 12px;text-align:left;font-weight:600;color:var(--text-muted);border-bottom:1px solid var(--card-border);font-size:11px;text-transform:uppercase;letter-spacing:.3px}
+td{padding:10px 12px;border-bottom:1px solid #f1f5f9}
+tr:hover td{background:#f8fafc}
+/* Confidence */
+.conf{display:inline-flex;align-items:center;gap:4px;padding:3px 10px;border-radius:20px;font-size:10px;font-weight:600}
+.conf-high{background:#ecfdf5;color:#065f46}.conf-med{background:#fffbeb;color:#92400e}.conf-low{background:#fff7ed;color:#9a3412}.conf-none{background:#fef2f2;color:#991b1b}
+.conf::before{content:'';width:6px;height:6px;border-radius:50%}
+.conf-high::before{background:var(--success)}.conf-med::before{background:var(--warning)}.conf-low::before{background:#ea580c}.conf-none::before{background:var(--danger)}
+/* Tags */
+.brick-tag{display:inline-block;background:#f0fdfa;color:var(--accent);padding:3px 8px;border-radius:4px;font-size:10px;font-weight:600;border:1px solid rgba(13,148,136,.15)}
+.hs-tag{display:inline-block;background:#f8fafc;color:var(--text-muted);padding:2px 6px;border-radius:3px;font-size:9px;border:1px solid var(--card-border);margin:1px}
+.src-tag{display:inline-block;padding:2px 6px;border-radius:3px;font-size:9px;font-weight:600}
+.src-pattern{background:#eff6ff;color:var(--info)}.src-ollama{background:#faf5ff;color:#7c3aed}.src-claude{background:#fdf4ff;color:#a21caf}.src-unit{background:#fff7ed;color:#c2410c}
+/* Actions bar */
+.actions{display:flex;gap:10px;margin-top:16px;flex-wrap:wrap}
+/* JSON */
+.json-viewer{background:#0f172a;color:#94a3b8;padding:20px;border-radius:var(--radius);overflow:auto;font-family:'JetBrains Mono','Fira Code',monospace;font-size:11px;max-height:600px;white-space:pre;border:1px solid #1e293b;line-height:1.5}
+/* Modal */
+.modal-overlay{display:none;position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(15,23,42,.6);z-index:1000;align-items:center;justify-content:center;backdrop-filter:blur(4px)}
+.modal-overlay.show{display:flex}
+.modal{background:var(--card);border-radius:12px;padding:28px;max-width:520px;width:90%;box-shadow:0 25px 50px rgba(0,0,0,.15)}
+.modal h3{font-size:16px;margin-bottom:20px;color:var(--text)}
+.form-group{margin-bottom:16px}
+.form-group label{display:block;margin-bottom:6px;font-weight:600;color:var(--text);font-size:12px}
+.form-group input{width:100%;padding:9px 12px;border:1px solid var(--card-border);border-radius:6px;font-size:13px;background:var(--card);color:var(--text)}
+.form-group input:focus{outline:none;border-color:var(--accent);box-shadow:0 0 0 3px rgba(13,148,136,.1)}
+.form-group input[readonly]{background:#f8fafc;color:var(--text-muted)}
+.modal-actions{display:flex;gap:10px;justify-content:flex-end;margin-top:20px}
+/* Empty */
+.empty{text-align:center;padding:80px 20px;color:var(--text-muted)}
+.empty-icon{font-size:48px;margin-bottom:16px;opacity:.4}
+.empty h3{color:var(--text);margin-bottom:8px;font-size:16px}
+/* Loading */
+.spinner{border:3px solid var(--card-border);border-top:3px solid var(--accent);border-radius:50%;width:28px;height:28px;animation:spin .6s linear infinite;margin:0 auto 12px}
+@keyframes spin{to{transform:rotate(360deg)}}
+.loading{text-align:center;padding:60px;color:var(--text-muted)}
+/* Toast */
+.toast{position:fixed;bottom:24px;right:24px;padding:12px 20px;background:var(--sidebar);color:#e2e8f0;border-radius:8px;font-size:12px;z-index:2000;box-shadow:0 8px 32px rgba(0,0,0,.2);transition:.3s;transform:translateY(80px);opacity:0;border:1px solid #334155}
+.toast.show{transform:translateY(0);opacity:1}
+/* Progress bar for Ollama */
+.progress-bar{height:3px;background:#e2e8f0;border-radius:2px;overflow:hidden;margin-top:8px}
+.progress-bar .fill{height:100%;background:var(--accent);border-radius:2px;transition:width .3s}
+</style>
+</head>
+<body>
+<div class="app">
+  <!-- Top bar -->
+  <div class="topbar">
+    <div class="dot"></div>
+    <h1>BACnet Semantic Intelligence</h1>
+    <span class="badge">v1.1</span>
+    <div class="topbar-right">
+      <span class="topbar-stat" id="ollamaStatus"></span>
+    </div>
+  </div>
+
+  <!-- Sidebar -->
+  <div class="sidebar">
+    <div class="upload-zone" id="dropzone">
+      <div class="upload-icon">&#128206;</div>
+      <div class="upload-text"><strong>Drop JSON file</strong><br>or click to browse</div>
+      <input type="file" id="fileInput" accept=".json">
+    </div>
+    <input type="text" class="site-input" id="siteName" placeholder="Site name (optional)">
+    <button class="btn btn-primary btn-block" id="parseBtn" disabled>Parse & Enrich</button>
+    <button class="btn btn-ghost btn-block" style="margin-top:6px;display:none" id="allPointsBtn" onclick="loadAllPoints()">All Points</button>
+    <div id="deviceList"></div>
+  </div>
+
+  <!-- Content -->
+  <div class="content" id="contentArea">
+    <div class="empty">
+      <div class="empty-icon">&#9889;</div>
+      <h3>Ready to Start</h3>
+      <p>Upload a BACnet discovery report to begin semantic enrichment</p>
+      <p style="margin-top:12px;font-size:11px;color:var(--text-light)">Supports JSON discovery reports with automatic pattern matching + Ollama AI</p>
+    </div>
+  </div>
+</div>
+
+<!-- Edit Modal -->
+<div class="modal-overlay" id="editModal">
+  <div class="modal">
+    <h3>Edit Classification</h3>
+    <div class="form-group">
+      <label>Point Name</label>
+      <input type="text" id="editPointName" readonly>
+    </div>
+    <div class="form-group">
+      <label>BRICK Class URI</label>
+      <input type="text" id="editBrick" placeholder="https://brickschema.org/schema/Brick#...">
+    </div>
+    <div class="form-group">
+      <label>BRICK Label</label>
+      <input type="text" id="editBrickLabel" placeholder="e.g. Zone Air Temperature Sensor">
+    </div>
+    <div class="form-group">
+      <label>Haystack Tags (comma-separated)</label>
+      <input type="text" id="editHaystack" placeholder="sensor, temp, zone, air, point">
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-outline" onclick="closeModal()">Cancel</button>
+      <button class="btn btn-success" onclick="saveEdit()">Save Correction</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+const AUTH='Basic '+btoa('admin:changeme');
+let currentSiteId=null,currentDeviceId=null,currentDevicePoints=[];
+let editingPointId=null;
+
+function $(s){return document.querySelector(s)}
+function $$(s){return document.querySelectorAll(s)}
+function toast(msg,ms=3000){const t=$('#toast');t.textContent=msg;t.classList.add('show');setTimeout(()=>t.classList.remove('show'),ms)}
+
+async function api(path,opts={}){
+  const res=await fetch(path,{...opts,headers:{'Authorization':AUTH,...(opts.headers||{})}});
+  if(!res.ok){const e=await res.json().catch(()=>({error:res.statusText}));throw new Error(e.error||'API error')}
+  return res.json();
+}
+function esc(s){if(!s)return'';const d=document.createElement('div');d.textContent=s;return d.innerHTML}
+function srcTag(src){
+  const m={'pattern':'src-pattern','ai-ollama':'src-ollama','ai-claude':'src-claude','unit-fallback':'src-unit','cache':'src-pattern','manual':'src-pattern'};
+  return `<span class="src-tag ${m[src]||'src-pattern'}">${esc(src)}</span>`;
+}
+
+// Check Ollama on load
+(async()=>{
+  try{const r=await fetch('http://localhost:11434/api/tags',{signal:AbortSignal.timeout(2000)});
+    if(r.ok){$('#ollamaStatus').innerHTML='<b style="color:#14b8a6">Ollama</b> connected'}
+    else{$('#ollamaStatus').innerHTML='Ollama <span style="color:#ef4444">offline</span>'}
+  }catch{$('#ollamaStatus').innerHTML='Ollama <span style="color:#ef4444">offline</span>'}
+})();
+
+// ---- Upload ----
+const dropzone=$('#dropzone'),fileInput=$('#fileInput');
+let selectedFile=null;
+dropzone.addEventListener('click',()=>fileInput.click());
+dropzone.addEventListener('dragover',e=>{e.preventDefault();dropzone.classList.add('dragover')});
+dropzone.addEventListener('dragleave',()=>dropzone.classList.remove('dragover'));
+dropzone.addEventListener('drop',e=>{e.preventDefault();dropzone.classList.remove('dragover');if(e.dataTransfer.files.length)pickFile(e.dataTransfer.files[0])});
+fileInput.addEventListener('change',()=>{if(fileInput.files.length)pickFile(fileInput.files[0])});
+
+function pickFile(f){
+  if(!f.name.endsWith('.json')){toast('Please select a JSON file');return}
+  selectedFile=f;
+  dropzone.innerHTML=`<div class="upload-icon">&#9989;</div><div class="upload-text"><strong>${esc(f.name)}</strong><br>${(f.size/1024/1024).toFixed(1)} MB</div><input type="file" id="fileInput" accept=".json">`;
+  $('#fileInput').addEventListener('change',()=>{if($('#fileInput').files.length)pickFile($('#fileInput').files[0])});
+  if(!$('#siteName').value)$('#siteName').value=f.name.replace(/\.json$/,'').replace(/[_-]/g,' ');
+  $('#parseBtn').disabled=false;
+}
+
+// ---- Parse + Enrich ----
+$('#parseBtn').addEventListener('click',async()=>{
+  if(!selectedFile)return;
+  const btn=$('#parseBtn');btn.disabled=true;btn.textContent='Parsing...';
+  $('#contentArea').innerHTML='<div class="loading"><div class="spinner"></div>Parsing discovery report...</div>';
+  try{
+    const form=new FormData();form.append('file',selectedFile);form.append('siteName',$('#siteName').value||'Site');
+    const data=await fetch('/api/parse',{method:'POST',headers:{'Authorization':AUTH},body:form}).then(r=>r.json());
+    if(data.error)throw new Error(data.error);
+    currentSiteId=data.siteId;
+    toast('Parsed '+data.stats.totalObjects.toLocaleString()+' objects');
+
+    btn.textContent='Enriching + Ollama AI...';
+    $('#contentArea').innerHTML='<div class="loading"><div class="spinner"></div>Pattern matching + Ollama AI enrichment...<br><small style="color:var(--text-light)">This may take a minute for large files</small></div>';
+    const enrichData=await api('/api/enrich',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({siteId:currentSiteId})});
+
+    const oMsg=enrichData.ollamaEnhanced>0?` | Ollama enhanced ${enrichData.ollamaEnhanced} points`:'';
+    toast(`Enriched: ${enrichData.summary.high} high, ${enrichData.summary.medium} med, ${enrichData.summary.low} low${oMsg}`,5000);
+
+    const devData=await api('/api/devices?siteId='+currentSiteId);
+    renderDeviceList(devData.devices);
+    $('#allPointsBtn').style.display='block';
+    loadAllPoints();
+  }catch(e){toast('Error: '+e.message);$('#contentArea').innerHTML='<div class="empty"><div class="empty-icon">&#10060;</div><h3>Error</h3><p>'+esc(e.message)+'</p></div>'}
+  finally{btn.disabled=false;btn.textContent='Parse & Enrich'}
+});
+
+function renderDeviceList(devices){
+  const el=$('#deviceList');
+  el.innerHTML='<div class="section-label">'+devices.length+' Devices</div>'+
+    devices.map(d=>`
+    <div class="dev-item" data-id="${d.deviceId}" onclick="selectDevice('${d.deviceId}',this)">
+      <div class="dev-name" title="${esc(d.vendorName)} ${esc(d.modelName)}">${esc(d.vendorName)} ${esc(d.modelName)}</div>
+      <div class="dev-meta">#${esc(d.deviceId)} &middot; ${d.supportedPoints} points</div>
+    </div>`).join('');
+}
+
+// ---- Select Device ----
+async function selectDevice(deviceId,el){
+  $$('.dev-item').forEach(i=>i.classList.remove('selected'));
+  if(el)el.classList.add('selected');
+  currentDeviceId=deviceId;
+  $('#contentArea').innerHTML='<div class="loading"><div class="spinner"></div>Loading...</div>';
+  try{
+    const data=await api(`/api/device-points?siteId=${currentSiteId}&deviceId=${deviceId}`);
+    currentDevicePoints=data.points;
+    renderDeviceView(data);
+  }catch(e){$('#contentArea').innerHTML='<div class="empty"><div class="empty-icon">&#10060;</div><h3>Error</h3><p>'+esc(e.message)+'</p></div>'}
+}
+
+function renderDeviceView(data){
+  const s=data.summary;
+  $('#contentArea').innerHTML=`
+    <div class="tabs">
+      <button class="tab active" onclick="switchTab('points',this)">Points (${s.total})</button>
+      <button class="tab" onclick="switchTab('td',this)">Thing Description</button>
+    </div>
+    <div class="tab-content active" id="tab-points">
+      ${renderStats(s)}
+      <div class="filters">
+        <input type="text" class="filter-input" id="searchInput" placeholder="Search points..." oninput="filterTable()">
+        <select class="filter-select" id="confFilter" onchange="filterTable()">
+          <option value="">All Levels</option><option value="HIGH">HIGH</option><option value="MEDIUM">MEDIUM</option><option value="LOW">LOW</option><option value="NO_MATCH">NO_MATCH</option>
+        </select>
+        <span class="count-label" id="countLabel"></span>
+      </div>
+      <div class="table-wrap">
+        <table><thead><tr>
+          <th>Point Name</th><th>Type</th><th>Units</th>
+          <th>BRICK Class</th><th>Haystack</th><th>Confidence</th><th>Source</th><th style="width:100px">Actions</th>
+        </tr></thead><tbody id="pointsBody"></tbody></table>
+      </div>
+      <div class="actions">
+        <button class="btn btn-claude btn-sm" onclick="aiEnhanceAll()">Claude AI Enhance All</button>
+        <button class="btn btn-primary btn-sm" onclick="switchTab('td',$$('.tab')[1])">Thing Description</button>
+        <button class="btn btn-outline btn-sm" onclick="exportCSV()">Export CSV</button>
+      </div>
+    </div>
+    <div class="tab-content" id="tab-td"><div id="tdContent"></div></div>
+  `;
+  renderPointsTable(data.points);
+}
+
+function renderStats(s){
+  const total=s.total||s.high+s.medium+s.low+s.noMatch;
+  return `<div class="stats-row">
+    <div class="stat-card accent"><div class="stat-num c-total">${total}</div><div class="stat-label">Total</div></div>
+    <div class="stat-card"><div class="stat-num c-high">${s.high}</div><div class="stat-label">High &ge;80%</div></div>
+    <div class="stat-card"><div class="stat-num c-med">${s.medium}</div><div class="stat-label">Medium</div></div>
+    <div class="stat-card"><div class="stat-num c-low">${s.low}</div><div class="stat-label">Low</div></div>
+    <div class="stat-card"><div class="stat-num c-none">${s.noMatch}</div><div class="stat-label">No Match</div></div>
+  </div>`;
+}
+
+function switchTab(name,tabEl){
+  $$('.tab').forEach(t=>t.classList.remove('active'));
+  $$('.tab-content').forEach(t=>t.classList.remove('active'));
+  if(tabEl)tabEl.classList.add('active');
+  document.getElementById('tab-'+name).classList.add('active');
+  if(name==='td')loadTD();
+}
+
+function renderPointsTable(points){
+  const body=$('#pointsBody');if(!body)return;
+  body.innerHTML=points.map(p=>`
+    <tr data-conf="${p.confidenceLevel}" data-search="${(p.objectName+' '+(p.brickClass||'')+' '+(p.haystackTags||[]).join(' ')+' '+(p.deviceId||'')).toLowerCase()}">
+      <td title="${esc(p.objectName)}"><strong>${esc(p.objectName)}</strong>${p.equipmentRef?'<br><span style="color:var(--text-light);font-size:10px">'+esc(p.equipmentRef)+'</span>':''}</td>
+      <td style="color:var(--text-muted)">${esc(p.objectType)}</td>
+      <td style="color:var(--text-muted)">${esc(p.units||'-')}</td>
+      <td>${p.brickClass?'<span class="brick-tag">'+esc(p.brickClass)+'</span>':'<span style="color:var(--text-light)">-</span>'}</td>
+      <td>${(p.haystackTags||[]).slice(0,5).map(t=>'<span class="hs-tag">'+esc(t)+'</span>').join('')}</td>
+      <td><span class="conf ${confClass(p.confidenceLevel)}">${(p.confidence*100).toFixed(0)}%</span></td>
+      <td>${srcTag(p.source)}</td>
+      <td style="white-space:nowrap">
+        <button class="btn btn-edit btn-sm" onclick='editPoint(${JSON.stringify(p).replace(/'/g,"&#39;")})'>Edit</button>
+        <button class="btn btn-claude btn-sm" onclick="aiEnhanceOne('${p.pointId}',this)">Claude</button>
+      </td>
+    </tr>`).join('');
+  updateCount();
+}
+
+function confClass(l){return{HIGH:'conf-high',MEDIUM:'conf-med',LOW:'conf-low',NO_MATCH:'conf-none'}[l]||'conf-none'}
+
+function filterTable(){
+  const s=($('#searchInput')?.value||'').toLowerCase();
+  const c=$('#confFilter')?.value||'';
+  $$('#pointsBody tr').forEach(tr=>{tr.style.display=(!c||tr.dataset.conf===c)&&(!s||tr.dataset.search.includes(s))?'':'none'});
+  updateCount();
+}
+function updateCount(){
+  const v=$$('#pointsBody tr:not([style*="display: none"])').length;
+  const t=$$('#pointsBody tr').length;
+  const el=$('#countLabel');if(el)el.textContent=v+' of '+t;
+}
+
+// ---- Edit ----
+function editPoint(p){
+  editingPointId=p.pointId;
+  $('#editPointName').value=p.objectName;
+  $('#editBrick').value=p.brickUri||'';
+  $('#editBrickLabel').value=p.brickClass||'';
+  $('#editHaystack').value=(p.haystackTags||[]).join(', ');
+  $('#editModal').classList.add('show');
+}
+function closeModal(){$('#editModal').classList.remove('show')}
+
+async function saveEdit(){
+  const brickUri=$('#editBrick').value.trim();
+  const brickLabel=$('#editBrickLabel').value.trim();
+  const tags=$('#editHaystack').value.split(',').map(t=>t.trim()).filter(Boolean);
+  if(!brickUri){toast('BRICK URI required');return}
+  try{
+    await api('/api/update-inference',{method:'POST',headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({siteId:currentSiteId,pointId:editingPointId,correctedBrickUri:brickUri,correctedBrickLabel:brickLabel,correctedBrickCategory:'Manual',correctedHaystackMarkers:tags})});
+    closeModal();toast('Correction saved');
+    if(currentDeviceId)selectDevice(currentDeviceId);else loadAllPoints();
+  }catch(e){toast('Error: '+e.message)}
+}
+
+// ---- Claude AI per-row ----
+async function aiEnhanceOne(pointId,btn){
+  btn.disabled=true;btn.textContent='...';
+  try{
+    const data=await api('/api/enhance-point',{method:'POST',headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({siteId:currentSiteId,pointId})});
+    if(data.enhanced){
+      toast('Claude: '+data.brickClass+' ('+Math.round(data.confidence*100)+'%)');
+      if(currentDeviceId)selectDevice(currentDeviceId);else loadAllPoints();
+    }else{toast(data.reason||'Claude could not improve');btn.disabled=false;btn.textContent='Claude'}
+  }catch(e){toast('Error: '+e.message);btn.disabled=false;btn.textContent='Claude'}
+}
+
+// ---- Claude AI bulk ----
+async function aiEnhanceAll(){
+  toast('Running Claude AI on all points...',5000);
+  try{
+    const data=await api('/api/enhance-with-ai',{method:'POST',headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({siteId:currentSiteId,maxPoints:200,minConfidence:1.0})});
+    toast(`Claude: ${data.pointsEnhanced}/${data.pointsProcessed} improved`);
+    if(currentDeviceId)selectDevice(currentDeviceId);else loadAllPoints();
+  }catch(e){toast('Error: '+e.message)}
+}
+
+// ---- All Points ----
+let allSearch='',allConf='';
+async function loadAllPoints(conf,search){
+  $$('.dev-item').forEach(i=>i.classList.remove('selected'));
+  currentDeviceId=null;
+  allConf=conf||allConf||'';allSearch=search??allSearch??'';
+  $('#contentArea').innerHTML='<div class="loading"><div class="spinner"></div>Loading all points...</div>';
+  try{
+    const p=new URLSearchParams({siteId:currentSiteId,limit:'1000'});
+    if(allConf)p.set('confidence',allConf);if(allSearch)p.set('search',allSearch);
+    const data=await api('/api/all-points?'+p);
+    renderAllPointsView(data);
+  }catch(e){$('#contentArea').innerHTML='<div class="empty"><div class="empty-icon">&#10060;</div><p>'+esc(e.message)+'</p></div>'}
+}
+
+function renderAllPointsView(data){
+  const s=data.summary;
+  currentDevicePoints=data.points;
+  $('#contentArea').innerHTML=`
+    <h3 style="margin-bottom:16px;font-size:15px">All Points <span style="color:var(--text-muted);font-weight:400">(${data.total.toLocaleString()} supported)</span></h3>
+    ${renderStats(s)}
+    <div class="filters">
+      <input type="text" class="filter-input" id="globalSearch" placeholder="Search all points..." value="${esc(allSearch)}"
+        onkeydown="if(event.key==='Enter')loadAllPoints($('#globalConfFilter').value,this.value)">
+      <select class="filter-select" id="globalConfFilter" onchange="loadAllPoints(this.value,$('#globalSearch').value)">
+        <option value="" ${allConf===''?'selected':''}>All Levels</option>
+        <option value="HIGH" ${allConf==='HIGH'?'selected':''}>HIGH</option>
+        <option value="MEDIUM" ${allConf==='MEDIUM'?'selected':''}>MEDIUM</option>
+        <option value="LOW" ${allConf==='LOW'?'selected':''}>LOW</option>
+        <option value="NO_MATCH" ${allConf==='NO_MATCH'?'selected':''}>NO_MATCH</option>
+      </select>
+      <button class="btn btn-primary btn-sm" onclick="loadAllPoints($('#globalConfFilter').value,$('#globalSearch').value)">Search</button>
+      <span class="count-label">${data.points.length} of ${data.total}</span>
+    </div>
+    <div class="table-wrap">
+      <table><thead><tr>
+        <th>Device</th><th>Point Name</th><th>Type</th><th>Units</th>
+        <th>BRICK Class</th><th>Confidence</th><th>Source</th><th style="width:100px">Actions</th>
+      </tr></thead><tbody>${data.points.map(p=>`
+        <tr>
+          <td style="font-size:10px;color:var(--text-muted)" title="${esc(p.deviceId)}">${esc(p.deviceId)}</td>
+          <td title="${esc(p.objectName)}"><strong>${esc(p.objectName)}</strong>${p.equipmentRef?'<br><span style="color:var(--text-light);font-size:10px">'+esc(p.equipmentRef)+'</span>':''}</td>
+          <td style="color:var(--text-muted)">${esc(p.objectType)}</td>
+          <td style="color:var(--text-muted)">${esc(p.units||'-')}</td>
+          <td>${p.brickClass?'<span class="brick-tag">'+esc(p.brickClass)+'</span>':'-'}</td>
+          <td><span class="conf ${confClass(p.confidenceLevel)}">${(p.confidence*100).toFixed(0)}%</span></td>
+          <td>${srcTag(p.source)}</td>
+          <td style="white-space:nowrap">
+            <button class="btn btn-edit btn-sm" onclick='editPoint(${JSON.stringify(p).replace(/'/g,"&#39;")})'>Edit</button>
+            <button class="btn btn-claude btn-sm" onclick="aiEnhanceOne('${p.pointId}',this)">Claude</button>
+          </td>
+        </tr>`).join('')}
+      </tbody></table>
+    </div>
+    <div class="actions">
+      <button class="btn btn-claude btn-sm" onclick="aiEnhanceAll()">Claude AI Enhance All</button>
+      <button class="btn btn-outline btn-sm" onclick="exportCSV()">Export CSV</button>
+    </div>
+  `;
+}
+
+// ---- TD ----
+async function loadTD(){
+  const el=$('#tdContent');
+  el.innerHTML='<div class="loading"><div class="spinner"></div>Generating...</div>';
+  try{
+    const data=await api('/api/generate-td',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({siteId:currentSiteId})});
+    const td=data.thingDescriptions.find(t=>t.metadata.deviceId===currentDeviceId)||data.thingDescriptions[0];
+    if(!td){el.innerHTML='<div class="empty">No TD generated</div>';return}
+    window._lastTD=td;
+    el.innerHTML=`<div style="margin-bottom:12px;display:flex;gap:10px">
+      <button class="btn btn-success btn-sm" onclick="downloadTD()">Download JSON</button>
+      <button class="btn btn-outline btn-sm" onclick="switchTab('points',$$('.tab')[0])">Back to Points</button>
+    </div><div class="json-viewer">${esc(JSON.stringify(td,null,2))}</div>`;
+  }catch(e){el.innerHTML='<div class="empty"><p>'+esc(e.message)+'</p></div>'}
+}
+function downloadTD(){
+  if(!window._lastTD)return;
+  const b=new Blob([JSON.stringify(window._lastTD,null,2)],{type:'application/json'});
+  const a=document.createElement('a');a.href=URL.createObjectURL(b);
+  a.download='TD-'+(currentDeviceId||'site')+'.json';a.click();URL.revokeObjectURL(a.href);toast('Downloaded');
+}
+
+// ---- CSV ----
+function exportCSV(){
+  if(!currentDevicePoints.length){toast('No points');return}
+  const h=['Name','Type','Units','EquipRef','BRICK Class','BRICK URI','Haystack Tags','Confidence','Level','Source','Flagged'];
+  const rows=currentDevicePoints.map(p=>[p.objectName,p.objectType,p.units,p.equipmentRef||'',p.brickClass||'',p.brickUri||'',(p.haystackTags||[]).join(';'),p.confidence,p.confidenceLevel,p.source,p.flaggedForReview?'yes':'no']);
+  const csv=[h,...rows].map(r=>r.map(c=>'"'+String(c).replace(/"/g,'""')+'"').join(',')).join('\n');
+  const b=new Blob([csv],{type:'text/csv'});
+  const a=document.createElement('a');a.href=URL.createObjectURL(b);
+  a.download='enrichment-'+(currentDeviceId||'all')+'.csv';a.click();URL.revokeObjectURL(a.href);toast('CSV exported');
+}
+</script>
+</body>
+</html>

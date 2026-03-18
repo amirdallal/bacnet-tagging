@@ -200,8 +200,37 @@ class ClaudeProvider implements AIProvider {
  * Order: Ollama (free, local) → Claude API (paid, higher accuracy)
  */
 export class AIEnhancementService {
-  private providers: AIProvider[] = [new OllamaProvider(), new ClaudeProvider()];
+  private ollama = new OllamaProvider();
+  private claude = new ClaudeProvider();
+  private providers: AIProvider[] = [this.ollama, this.claude];
   private callCount = 0;
+
+  /** Check if Ollama is available */
+  async isOllamaAvailable(): Promise<boolean> {
+    return this.ollama.available();
+  }
+
+  /** Enhance using Ollama only (for auto-enrichment) */
+  async enhanceWithOllama(point: ParsedPoint, context?: string): Promise<EnrichmentResult | null> {
+    if (!(await this.ollama.available())) return null;
+    const start = performance.now();
+    const response = await this.ollama.enhance(point, context);
+    if (!response) return null;
+    this.callCount++;
+    return {
+      pointId: point.id,
+      brickClass: response.brickClass,
+      haystackTags: response.haystackTags,
+      confidence: response.confidence,
+      confidenceLevel: response.confidence >= 0.80 ? 'HIGH' : response.confidence >= 0.50 ? 'MEDIUM' : 'LOW',
+      matchedPattern: null,
+      alternativeMatches: [],
+      flaggedForReview: response.confidence < 0.50,
+      reviewReason: response.confidence < 0.50 ? 'AI classification below medium confidence' : null,
+      enrichmentSource: 'ai-ollama',
+      processingTimeMs: performance.now() - start,
+    };
+  }
 
   /**
    * Enhance a point using AI providers (fallback chain).
