@@ -1784,6 +1784,85 @@ export const patterns: SemanticPattern[] = [
 
   // --- ALC lvl input ---
   { id: 'alc-lvl-input', regex: /\blvl[\s_]?input\b/i, brickClass: brick('Level_Sensor', 'Level Input', 'Equipment'), haystackTags: tags(['sensor', 'level', 'point']), baseConfidence: 0.75, category: 'equipment' },
+
+  // ============================================================
+  // ADDITIONAL PATTERNS FROM KAHULUI NO_MATCH ANALYSIS
+  // ============================================================
+
+  // --- Cooling/Heating Requests (plain text, not already caught) ---
+  { id: 'plain-cooling-request', regex: /\bCooling\s*Request\b/i, brickClass: brick('Cooling_Request', 'Cooling Request', 'Cooling'), haystackTags: tags(['cmd', 'cooling', 'request', 'point']), baseConfidence: 0.88, category: 'setpoint' },
+  { id: 'plain-heating-request', regex: /\bHeating\s*Request\b/i, brickClass: brick('Heating_Request', 'Heating Request', 'Heating'), haystackTags: tags(['cmd', 'heating', 'request', 'point']), baseConfidence: 0.88, category: 'setpoint' },
+  { id: 'plain-pressure-request', regex: /\bPressure\s*Request\b/i, brickClass: brick('Pressure_Request', 'Pressure Request', 'Pressure'), haystackTags: tags(['cmd', 'pressure', 'request', 'point']), baseConfidence: 0.85, category: 'pressure' },
+
+  // --- VAV Box Mode ---
+  { id: 'vav-box-mode', regex: /\bVAV\s*(Box\s*)?Mode\b/i, brickClass: brick('VAV_Box_Mode_Status', 'VAV Box Mode', 'Status'), haystackTags: tags(['sensor', 'vav', 'mode', 'point']), baseConfidence: 0.85, category: 'status' },
+
+  // --- Running/RUN-STOP/Hand-Auto (VFD/motor controls) ---
+  { id: 'vfd-running', regex: /\bRunning\b/i, brickClass: brick('Run_Status', 'Running Status', 'Status'), haystackTags: tags(['sensor', 'run', 'point']), baseConfidence: 0.75, category: 'status' },
+  { id: 'vfd-run-stop-cmd', regex: /\bRUN[\s\/]*STOP\s*(CMD|Command)\b/i, brickClass: brick('Run_Command', 'Run/Stop Command', 'Status'), haystackTags: tags(['cmd', 'run', 'point']), baseConfidence: 0.85, category: 'status' },
+  { id: 'vfd-run-stop-act', regex: /\bRUN[\s\/]*STOP\s*(ACT|Monitor)\b/i, brickClass: brick('Run_Status', 'Run/Stop Status', 'Status'), haystackTags: tags(['sensor', 'run', 'point']), baseConfidence: 0.82, category: 'status' },
+  { id: 'vfd-hand-auto', regex: /\bHAND[\s\/]*AUTO\s*(ACT|Reference|CMD)?\b/i, brickClass: brick('Hand_Auto_Status', 'Hand/Auto Status', 'Status'), haystackTags: tags(['sensor', 'override', 'mode', 'point']), baseConfidence: 0.82, category: 'status' },
+  { id: 'vfd-run-ena', regex: /\bRUN\s*ENA\s*(CMD|ACT)\b/i, brickClass: brick('Run_Enable_Command', 'Run Enable', 'Status'), haystackTags: tags(['cmd', 'run', 'enable', 'point']), baseConfidence: 0.82, category: 'status' },
+
+  // --- Warning/Trip/Fault (VFD alarms) ---
+  { id: 'vfd-warning', regex: /\bWarning\b/i, brickClass: brick('Alarm', 'Warning', 'Alarm'), haystackTags: tags(['sensor', 'alarm', 'warning', 'point']), baseConfidence: 0.70, category: 'alarm' },
+  { id: 'vfd-trip', regex: /\bTrip(lock)?\b/i, brickClass: brick('Trip_Alarm', 'Trip/Triplock', 'Alarm'), haystackTags: tags(['sensor', 'alarm', 'trip', 'point']), baseConfidence: 0.78, category: 'alarm' },
+  { id: 'vfd-last-flt', regex: /\b(LAST|PREV)\s*FLT\b/i, brickClass: brick('Fault_History', 'Fault History', 'Alarm'), haystackTags: tags(['sensor', 'alarm', 'fault', 'history', 'point']), baseConfidence: 0.78, category: 'alarm' },
+  { id: 'vfd-maint-req', regex: /\bMAINT\s*REQ\b/i, brickClass: brick('Maintenance_Required_Alarm', 'Maintenance Required', 'Alarm'), haystackTags: tags(['sensor', 'alarm', 'maintenance', 'point']), baseConfidence: 0.82, category: 'alarm' },
+  { id: 'vfd-fault-reset', regex: /\bFault\s*Reset\b/i, brickClass: brick('Fault_Reset_Command', 'Fault Reset', 'Alarm'), haystackTags: tags(['cmd', 'alarm', 'fault', 'reset', 'point']), baseConfidence: 0.82, category: 'alarm' },
+  { id: 'vfd-safety-interlock', regex: /\bSafety\s*Interlock\b/i, brickClass: brick('Safety_Interlock_Status', 'Safety Interlock', 'Status'), haystackTags: tags(['sensor', 'safety', 'interlock', 'point']), baseConfidence: 0.85, category: 'status' },
+
+  // --- PID parameters ---
+  { id: 'pid-param', regex: /\bPID\s*(Proportional|Integral|Diff|Feedback|Start)/i, brickClass: brick('PID_Parameter', 'PID Parameter', 'Diagnostic'), haystackTags: tags(['point', 'pid', 'diagnostic']), baseConfidence: 0.78, category: 'diagnostic' },
+
+  // --- Chiller plant lead/lag/alternation ---
+  { id: 'lead-chiller', regex: /\bLead\s*(Chiller|CHWP)\b/i, brickClass: brick('Lead_Lag_Command', 'Lead Equipment Selector', 'Equipment'), haystackTags: tags(['cmd', 'lead', 'point']), baseConfidence: 0.80, category: 'equipment' },
+  { id: 'lag-chiller', regex: /\bLag\s*(Chiller|CHWP)\b/i, brickClass: brick('Lead_Lag_Command', 'Lag Equipment Selector', 'Equipment'), haystackTags: tags(['cmd', 'lag', 'point']), baseConfidence: 0.80, category: 'equipment' },
+  { id: 'master-control', regex: /\bMaster\s*(Chiller\s*Plant\s*)?Control\b/i, brickClass: brick('Enable_Command', 'Master Control', 'Equipment'), haystackTags: tags(['cmd', 'enable', 'master', 'point']), baseConfidence: 0.78, category: 'equipment' },
+
+  // --- Digital/Relay IO (generic hardware) ---
+  { id: 'digital-io', regex: /\b(Digital\s*(input|output)|DI\d+|RO\d+)\s*(Term\s*\d+|ACT|CMD)?\b/i, brickClass: brick('Binary_Point', 'Digital IO', 'Diagnostic'), haystackTags: tags(['point', 'digital', 'io']), baseConfidence: 0.65, category: 'diagnostic' },
+  { id: 'relay-output', regex: /\bRelay\s*\d+\b/i, brickClass: brick('Binary_Output', 'Relay Output', 'Diagnostic'), haystackTags: tags(['cmd', 'relay', 'point']), baseConfidence: 0.65, category: 'diagnostic' },
+
+  // --- Chiller Mode Code / State (multi-state) ---
+  { id: 'chiller-mode-code', regex: /\bChiller[-_]?\d*\s*Mode\s*Code\b/i, brickClass: brick('Chiller_Mode_Status', 'Chiller Mode Code', 'Status'), haystackTags: tags(['sensor', 'chiller', 'mode', 'point']), baseConfidence: 0.88, category: 'status' },
+
+  // --- Bus Control / Pulse Output (VFD fieldbus) ---
+  { id: 'bus-control', regex: /\bBus\s*(Control|Feedback)\b/i, brickClass: brick('Communication_Command', 'Bus Control', 'Diagnostic'), haystackTags: tags(['point', 'comm', 'bus']), baseConfidence: 0.65, category: 'diagnostic' },
+
+  // --- OSS (Optimal Start/Stop) related ---
+  { id: 'oss-setpoint', regex: /\bOSS\s*(Set\s*Point|Temperature)\b/i, brickClass: brick('Optimal_Start_Setpoint', 'OSS Setpoint/Temperature', 'Setpoint'), haystackTags: tags(['sp', 'optimal', 'start', 'point']), baseConfidence: 0.82, category: 'setpoint' },
+
+  // --- Inlet Diameter (VAV sizing) ---
+  { id: 'inlet-diameter', regex: /\bInlet\s*Diameter\b/i, brickClass: brick('Duct_Size', 'Inlet Diameter', 'VAV'), haystackTags: tags(['point', 'vav', 'duct', 'size']), baseConfidence: 0.80, expectedUnits: ['inches'], category: 'vav' },
+
+  // --- Chiller-N Leaving/Entering CHW Temperature (with "BACnet" prefix) ---
+  { id: 'bacnet-chiller-leaving-chw', regex: /\bChiller[-_]?\d+\s*Leaving\s*CHW\s*(Temp|Temperature|Set[-\s]?Point)/i, brickClass: brick('Chilled_Water_Supply_Temperature_Sensor', 'Chiller Leaving CHW Temp', 'Temperature'), haystackTags: tags(['sensor', 'temp', 'leaving', 'chilled', 'water', 'chiller', 'point']), baseConfidence: 0.93, expectedUnits: ['degrees-fahrenheit', 'degrees-celsius'], category: 'temperature' },
+  { id: 'bacnet-chiller-entering-chw', regex: /\bChiller[-_]?\d+\s*Entering\s*CHW\s*(Temp|Temperature)/i, brickClass: brick('Chilled_Water_Return_Temperature_Sensor', 'Chiller Entering CHW Temp', 'Temperature'), haystackTags: tags(['sensor', 'temp', 'entering', 'chilled', 'water', 'chiller', 'point']), baseConfidence: 0.93, expectedUnits: ['degrees-fahrenheit', 'degrees-celsius'], category: 'temperature' },
+
+  // --- Chiller-N specific points (with "BACnet" prefix) ---
+  { id: 'bacnet-chiller-suction-press', regex: /\bChiller[-_]?\d+\s*Suction\s*Pressure/i, brickClass: brick('Suction_Pressure_Sensor', 'Chiller Suction Pressure', 'Pressure'), haystackTags: tags(['sensor', 'pressure', 'suction', 'chiller', 'point']), baseConfidence: 0.92, category: 'pressure' },
+  { id: 'bacnet-chiller-discharge-press', regex: /\bChiller[-_]?\d+\s*Discharge\s*Pressure/i, brickClass: brick('Discharge_Pressure_Sensor', 'Chiller Discharge Pressure', 'Pressure'), haystackTags: tags(['sensor', 'pressure', 'discharge', 'chiller', 'point']), baseConfidence: 0.92, category: 'pressure' },
+  { id: 'bacnet-chiller-igv', regex: /\bChiller[-_]?\d+\s*IGV\s*Position/i, brickClass: brick('Inlet_Guide_Vane_Command', 'Chiller IGV Position', 'Motor'), haystackTags: tags(['cmd', 'compressor', 'vane', 'chiller', 'point']), baseConfidence: 0.90, expectedUnits: ['percent'], category: 'equipment' },
+  { id: 'bacnet-chiller-liquid-ref', regex: /\bChiller[-_]?\d+\s*Liquid\s*Ref\s*Temp/i, brickClass: brick('Refrigerant_Temperature_Sensor', 'Chiller Liquid Ref Temp', 'Temperature'), haystackTags: tags(['sensor', 'temp', 'refrig', 'chiller', 'point']), baseConfidence: 0.90, expectedUnits: ['degrees-fahrenheit'], category: 'temperature' },
+  { id: 'bacnet-chiller-compressor-demand', regex: /\bChiller[-_]?\d+\s*Compressor\s*Demand/i, brickClass: brick('Compressor_Demand_Sensor', 'Chiller Compressor Demand', 'Motor'), haystackTags: tags(['sensor', 'compressor', 'demand', 'chiller', 'point']), baseConfidence: 0.90, category: 'equipment' },
+  { id: 'bacnet-chiller-total-power', regex: /\bChiller[-_]?\d+\s*Total\s*Power/i, brickClass: brick('Electric_Power_Sensor', 'Chiller Total Power', 'Power'), haystackTags: tags(['sensor', 'elec', 'power', 'chiller', 'point']), baseConfidence: 0.92, expectedUnits: ['kilowatts'], category: 'power' },
+  { id: 'bacnet-chiller-alarm-status', regex: /\bChiller[-_]?\d+\s*(Alarm|Fault)\s*(Status|Code)/i, brickClass: brick('Chiller_Alarm', 'Chiller Alarm/Fault', 'Alarm'), haystackTags: tags(['sensor', 'alarm', 'chiller', 'point']), baseConfidence: 0.90, category: 'alarm' },
+  { id: 'bacnet-chiller-run-status', regex: /\bChiller[-_]?\d+\s*Run\s*Status/i, brickClass: brick('Chiller_On_Off_Status', 'Chiller Run Status', 'Status'), haystackTags: tags(['sensor', 'chiller', 'run', 'point']), baseConfidence: 0.90, category: 'status' },
+
+  // --- VFD-specific points (ABB, Danfoss with "BACnet" prefix) ---
+  { id: 'bacnet-vfd-output-power', regex: /\bVFD\s*(Output\s*)?Power\b/i, brickClass: brick('Electric_Power_Sensor', 'VFD Output Power', 'Power'), haystackTags: tags(['sensor', 'elec', 'power', 'vfd', 'point']), baseConfidence: 0.90, expectedUnits: ['kilowatts'], category: 'power' },
+  { id: 'bacnet-vfd-dc-bus', regex: /\b(DC\s*(BUS|Link)\s*(VOLT|Voltage)|VFD\s*DC\s*Bus)/i, brickClass: brick('DC_Bus_Voltage_Sensor', 'DC Bus Voltage', 'Power'), haystackTags: tags(['sensor', 'elec', 'volt', 'dc', 'vfd', 'point']), baseConfidence: 0.88, expectedUnits: ['volts'], category: 'power' },
+  { id: 'bacnet-vfd-fault-status', regex: /\bVFD\s*Fault\s*Status\b/i, brickClass: brick('VFD_Alarm', 'VFD Fault Status', 'Alarm'), haystackTags: tags(['sensor', 'alarm', 'vfd', 'point']), baseConfidence: 0.88, category: 'alarm' },
+  { id: 'bacnet-vfd-run-status', regex: /\bVFD\s*Run\s*Status\b/i, brickClass: brick('VFD_Run_Status', 'VFD Run Status', 'Status'), haystackTags: tags(['sensor', 'vfd', 'run', 'point']), baseConfidence: 0.88, category: 'status' },
+  { id: 'bacnet-vfd-hand-auto', regex: /\bVFD\s*Hand[\s\/]*Auto\b/i, brickClass: brick('Hand_Auto_Status', 'VFD Hand/Auto', 'Status'), haystackTags: tags(['sensor', 'vfd', 'override', 'mode', 'point']), baseConfidence: 0.85, category: 'status' },
+
+  // --- Total VAV Cooling Requests (aggregate) ---
+  { id: 'total-vav-cooling', regex: /\bTotal\s*VAV\s*Cooling\s*Request/i, brickClass: brick('Cooling_Request_Count', 'Total VAV Cooling Requests', 'Status'), haystackTags: tags(['sensor', 'cooling', 'request', 'total', 'vav', 'point']), baseConfidence: 0.85, category: 'status' },
+  { id: 'total-vav-overrides', regex: /\bTotal\s*VAV\s*(T[\s_]?Stat\s*)?Override/i, brickClass: brick('Override_Count', 'Total VAV Overrides', 'Status'), haystackTags: tags(['sensor', 'override', 'total', 'vav', 'point']), baseConfidence: 0.82, category: 'status' },
+
+  // --- Sensorless Flow (CHWP VFD) ---
+  { id: 'bacnet-sensorless-flow', regex: /\bVFD\s*Sensorless\s*Flow\b/i, brickClass: brick('Water_Flow_Sensor', 'VFD Sensorless Flow', 'Flow'), haystackTags: tags(['sensor', 'water', 'flow', 'pump', 'vfd', 'point']), baseConfidence: 0.85, category: 'flow' },
 ];
 
 /**

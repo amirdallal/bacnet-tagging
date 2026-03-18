@@ -9,7 +9,7 @@ import { errorHandler } from './middleware/errorHandler.js';
 import { DiscoveryReportParser } from './services/DiscoveryReportParser.js';
 import { SemanticEnricher } from './services/SemanticEnricher.js';
 import { PatternCacheService } from './services/PatternCacheService.js';
-import { AIEnhancementService } from './services/AIEnhancementService.js';
+import { AIEnhancementService, type AIContext } from './services/AIEnhancementService.js';
 import { LearningService } from './services/LearningService.js';
 import { ThingDescriptionGenerator } from './services/ThingDescriptionGenerator.js';
 import { getPatternCount, getPatternsByCategory } from './patterns/index.js';
@@ -115,9 +115,9 @@ app.post('/api/parse', upload.single('file'), (req, res) => {
 });
 
 // ============================================================
-// POST /api/enrich — Enrich with patterns + auto-Ollama for low confidence
+// POST /api/enrich — Pattern-only enrichment (instant, <1s)
 // ============================================================
-app.post('/api/enrich', async (req, res) => {
+app.post('/api/enrich', (req, res) => {
   const { siteId } = req.body as { siteId?: string };
   if (!siteId) { res.status(400).json({ error: 'siteId required' }); return; }
 
@@ -128,61 +128,33 @@ app.post('/api/enrich', async (req, res) => {
   const results: EnrichedPoint[] = [];
   const summary: EnrichmentSummary = { high: 0, medium: 0, low: 0, noMatch: 0, flaggedForReview: 0, bySource: {}, processingTimeMs: 0 };
 
-  // Phase 1: Pattern matching for all points
+  // Enrichment priority: learned corrections → cache → pattern matching
   for (const point of report.points) {
-    const cacheKey = cache.buildKey(point.objectName, point.objectType, point.units);
-    const cached = cache.get(cacheKey);
-
     let enrichment: EnrichmentResult;
-    if (cached) {
-      enrichment = { ...cached, pointId: point.id };
+
+    // 1. Check learned corrections first (persisted from previous sessions)
+    const learned = learning.findCorrection(point.objectName, point.objectType, point.units);
+    if (learned) {
+      enrichment = { ...learned, pointId: point.id };
     } else {
-      enrichment = enricher.enrich(point);
-      if (enrichment.confidence > 0) {
-        cache.set(cacheKey, enrichment);
+      // 2. Check in-memory cache
+      const cacheKey = cache.buildKey(point.objectName, point.objectType, point.units);
+      const cached = cache.get(cacheKey);
+      if (cached) {
+        enrichment = { ...cached, pointId: point.id };
+      } else {
+        // 3. Pattern matching
+        enrichment = enricher.enrich(point);
+        if (enrichment.confidence > 0) {
+          cache.set(cacheKey, enrichment);
+        }
       }
     }
 
     results.push({ parsed: point, enrichment });
   }
 
-  // Phase 2: Auto-apply Ollama for supported points below MEDIUM confidence
-  // This is free + local, so we run it automatically
-  const needsOllama = results.filter(r =>
-    r.parsed.supported && !r.parsed.isVendorProprietary &&
-    r.enrichment.confidence < config.confidence.high
-  );
-
-  // Batch limit to avoid blocking too long — prioritize lowest confidence first
-  const ollamaBatch = needsOllama
-    .sort((a, b) => a.enrichment.confidence - b.enrichment.confidence)
-    .slice(0, 200);
-
-  let ollamaEnhanced = 0;
-  if (ollamaBatch.length > 0) {
-    // Check if Ollama is available before batching
-    const ollamaAvailable = await ai.isOllamaAvailable();
-    if (ollamaAvailable) {
-      // Process in parallel batches of 10
-      for (let i = 0; i < ollamaBatch.length; i += 10) {
-        const batch = ollamaBatch.slice(i, i + 10);
-        const promises = batch.map(async (point) => {
-          try {
-            const aiResult = await ai.enhanceWithOllama(point.parsed);
-            if (aiResult && aiResult.confidence > point.enrichment.confidence) {
-              point.enrichment = aiResult;
-              const cacheKey = cache.buildKey(point.parsed.objectName, point.parsed.objectType, point.parsed.units);
-              cache.set(cacheKey, aiResult);
-              ollamaEnhanced++;
-            }
-          } catch { /* skip failed points */ }
-        });
-        await Promise.all(promises);
-      }
-    }
-  }
-
-  // Tally final summary
+  // Tally summary
   for (const r of results) {
     switch (r.enrichment.confidenceLevel) {
       case 'HIGH': summary.high++; break;
@@ -197,27 +169,196 @@ app.post('/api/enrich', async (req, res) => {
   summary.processingTimeMs = performance.now() - start;
   enrichedResults.set(siteId, results);
 
-  res.json({
-    siteId,
-    totalPoints: results.length,
-    ollamaEnhanced,
-    summary,
-    sampleResults: results.map(r => ({
-      pointId: r.parsed.id,
-      objectName: r.parsed.objectName,
-      objectType: r.parsed.objectType,
-      units: r.parsed.units,
-      brickClass: r.enrichment.brickClass?.label ?? null,
-      brickUri: r.enrichment.brickClass?.uri ?? null,
-      haystackTags: r.enrichment.haystackTags.marker,
-      confidence: r.enrichment.confidence,
-      confidenceLevel: r.enrichment.confidenceLevel,
-      matchedPattern: r.enrichment.matchedPattern,
-      flaggedForReview: r.enrichment.flaggedForReview,
-      source: r.enrichment.enrichmentSource,
-    })),
-  });
+  // Count how many could benefit from Ollama
+  const ollamaCandidates = results.filter(r =>
+    r.parsed.supported && !r.parsed.isVendorProprietary &&
+    r.enrichment.confidence < config.confidence.high
+  ).length;
+
+  res.json({ siteId, totalPoints: results.length, ollamaCandidates, summary });
 });
+
+// ============================================================
+// GET /api/enrich-stream — SSE: progressive Ollama enhancement
+// ============================================================
+const activeStreams = new Map<string, AbortController>();
+
+app.get('/api/enrich-stream', async (req, res) => {
+  const siteId = req.query.siteId as string;
+  const maxPoints = Math.min(parseInt(req.query.maxPoints as string) || 500, 2000);
+  if (!siteId) { res.status(400).json({ error: 'siteId required' }); return; }
+
+  const results = enrichedResults.get(siteId);
+  if (!results) { res.status(404).json({ error: 'Enriched results not found' }); return; }
+
+  // Check Ollama
+  const ollamaAvailable = await ai.isOllamaAvailable();
+  if (!ollamaAvailable) {
+    res.status(503).json({ error: 'Ollama is not available' });
+    return;
+  }
+
+  // SSE headers
+  res.writeHead(200, {
+    'Content-Type': 'text/event-stream',
+    'Cache-Control': 'no-cache',
+    'Connection': 'keep-alive',
+    'X-Accel-Buffering': 'no',
+  });
+
+  // Abort controller for cancellation
+  const abortController = new AbortController();
+  const streamId = `${siteId}-${Date.now()}`;
+  activeStreams.set(streamId, abortController);
+
+  // Cancel on client disconnect
+  req.on('close', () => {
+    abortController.abort();
+    activeStreams.delete(streamId);
+  });
+
+  // Find points that need Ollama (below HIGH, sorted worst-first)
+  const candidates = results
+    .filter(r => r.parsed.supported && !r.parsed.isVendorProprietary && r.enrichment.confidence < config.confidence.high)
+    .sort((a, b) => a.enrichment.confidence - b.enrichment.confidence)
+    .slice(0, maxPoints);
+
+  const total = candidates.length;
+  let processed = 0;
+  let enhanced = 0;
+
+  // Send initial event
+  const send = (event: string, data: unknown) => {
+    if (!abortController.signal.aborted) {
+      res.write(`event: ${event}\ndata: ${JSON.stringify(data)}\n\n`);
+    }
+  };
+
+  send('start', { total, streamId });
+
+  // Process in parallel batches of 5 (balances speed vs Ollama load)
+  const BATCH_SIZE = 5;
+  for (let i = 0; i < candidates.length; i += BATCH_SIZE) {
+    if (abortController.signal.aborted) break;
+
+    const batch = candidates.slice(i, i + BATCH_SIZE);
+    const promises = batch.map(async (point) => {
+      if (abortController.signal.aborted) return;
+      try {
+        const ctx = buildAIContext(point, results);
+        const aiResult = await ai.enhanceWithOllama(point.parsed, ctx);
+        processed++;
+
+        if (aiResult && aiResult.confidence > point.enrichment.confidence) {
+          point.enrichment = aiResult;
+          const cacheKey = cache.buildKey(point.parsed.objectName, point.parsed.objectType, point.parsed.units);
+          cache.set(cacheKey, aiResult);
+          enhanced++;
+
+          // Send per-point update
+          send('point', {
+            pointId: point.parsed.id,
+            objectName: point.parsed.objectName,
+            brickClass: aiResult.brickClass?.label ?? null,
+            brickUri: aiResult.brickClass?.uri ?? null,
+            haystackTags: aiResult.haystackTags.marker,
+            confidence: aiResult.confidence,
+            confidenceLevel: aiResult.confidenceLevel,
+            source: aiResult.enrichmentSource,
+            processed,
+            enhanced,
+            total,
+          });
+        } else {
+          // Point processed but not improved
+          send('skip', { pointId: point.parsed.id, processed, total });
+        }
+      } catch {
+        processed++;
+        send('skip', { pointId: point.parsed.id, processed, total });
+      }
+    });
+
+    await Promise.all(promises);
+
+    // Send progress heartbeat after each batch
+    if (!abortController.signal.aborted) {
+      send('progress', { processed, enhanced, total, pct: Math.round(processed * 100 / total) });
+    }
+  }
+
+  // Done
+  send('done', { processed, enhanced, total });
+  activeStreams.delete(streamId);
+  res.end();
+});
+
+// Cancel an active stream
+app.post('/api/enrich-stream/cancel', (req, res) => {
+  const { streamId } = req.body as { streamId?: string };
+  if (!streamId) { res.status(400).json({ error: 'streamId required' }); return; }
+  const controller = activeStreams.get(streamId);
+  if (controller) {
+    controller.abort();
+    activeStreams.delete(streamId);
+    res.json({ success: true, cancelled: true });
+  } else {
+    res.json({ success: true, cancelled: false, reason: 'Stream not found or already finished' });
+  }
+});
+
+/** Build AI context for a point: sibling points, device metadata, corrections */
+function buildAIContext(point: EnrichedPoint, allResults: EnrichedPoint[]): AIContext {
+  // Get sibling points from the same device (up to 20, most diverse)
+  const siblings = allResults
+    .filter(r => r.parsed.deviceId === point.parsed.deviceId && r.parsed.id !== point.parsed.id && r.parsed.supported)
+    .slice(0, 20)
+    .map(r => ({
+      name: r.parsed.objectName,
+      type: r.parsed.objectType,
+      units: r.parsed.units,
+      brickLabel: r.enrichment.brickClass?.label,
+    }));
+
+  // Device metadata
+  const device = {
+    vendorName: point.parsed.vendorName,
+    modelName: point.parsed.modelName,
+    deviceId: point.parsed.deviceId,
+  };
+
+  // Recent corrections as few-shot examples
+  const corrections = learning.getCorrectionsForPrompt(8);
+
+  return { siblingPoints: siblings, device, corrections };
+}
+
+/** Serialize an enriched point for API responses */
+function serializePoint(r: EnrichedPoint) {
+  return {
+    pointId: r.parsed.id,
+    deviceId: r.parsed.deviceId,
+    objectName: r.parsed.objectName,
+    objectType: r.parsed.objectType,
+    units: r.parsed.units,
+    equipmentRef: r.parsed.equipmentRef,
+    description: r.parsed.description,
+    supported: r.parsed.supported,
+    isVendorProprietary: r.parsed.isVendorProprietary,
+    brickClass: r.enrichment.brickClass?.label ?? null,
+    brickUri: r.enrichment.brickClass?.uri ?? null,
+    brickCategory: r.enrichment.brickClass?.category ?? null,
+    haystackTags: r.enrichment.haystackTags.marker,
+    haystackValues: r.enrichment.haystackTags.value,
+    tagCount: r.enrichment.haystackTags.marker.length + Object.keys(r.enrichment.haystackTags.value).length + (r.enrichment.brickClass ? 1 : 0),
+    confidence: r.enrichment.confidence,
+    confidenceLevel: r.enrichment.confidenceLevel,
+    matchedPattern: r.enrichment.matchedPattern,
+    flaggedForReview: r.enrichment.flaggedForReview,
+    reviewReason: r.enrichment.reviewReason,
+    source: r.enrichment.enrichmentSource,
+  };
+}
 
 // ============================================================
 // GET /api/devices — List devices for a parsed report
@@ -273,25 +414,7 @@ app.get('/api/device-points', (req, res) => {
   res.json({
     deviceId,
     summary: { total: devicePoints.length, high, medium, low, noMatch, needsReview },
-    points: devicePoints.map(r => ({
-      pointId: r.parsed.id,
-      objectName: r.parsed.objectName,
-      objectType: r.parsed.objectType,
-      units: r.parsed.units,
-      equipmentRef: r.parsed.equipmentRef,
-      description: r.parsed.description,
-      supported: r.parsed.supported,
-      isVendorProprietary: r.parsed.isVendorProprietary,
-      brickClass: r.enrichment.brickClass?.label ?? null,
-      brickUri: r.enrichment.brickClass?.uri ?? null,
-      haystackTags: r.enrichment.haystackTags.marker,
-      confidence: r.enrichment.confidence,
-      confidenceLevel: r.enrichment.confidenceLevel,
-      matchedPattern: r.enrichment.matchedPattern,
-      flaggedForReview: r.enrichment.flaggedForReview,
-      reviewReason: r.enrichment.reviewReason,
-      source: r.enrichment.enrichmentSource,
-    })),
+    points: devicePoints.map(serializePoint),
   });
 });
 
@@ -337,22 +460,7 @@ app.get('/api/all-points', (req, res) => {
     offset,
     limit,
     summary: { high, medium, low, noMatch },
-    points: page.map(r => ({
-      pointId: r.parsed.id,
-      deviceId: r.parsed.deviceId,
-      objectName: r.parsed.objectName,
-      objectType: r.parsed.objectType,
-      units: r.parsed.units,
-      equipmentRef: r.parsed.equipmentRef,
-      brickClass: r.enrichment.brickClass?.label ?? null,
-      brickUri: r.enrichment.brickClass?.uri ?? null,
-      haystackTags: r.enrichment.haystackTags.marker,
-      confidence: r.enrichment.confidence,
-      confidenceLevel: r.enrichment.confidenceLevel,
-      matchedPattern: r.enrichment.matchedPattern,
-      flaggedForReview: r.enrichment.flaggedForReview,
-      source: r.enrichment.enrichmentSource,
-    })),
+    points: page.map(serializePoint),
   });
 });
 
@@ -369,21 +477,62 @@ app.post('/api/enhance-point', async (req, res) => {
   const point = results.find(r => r.parsed.id === pointId);
   if (!point) { res.status(404).json({ error: 'Point not found' }); return; }
 
-  const aiResult = await ai.enhance(point.parsed);
+  // Capture old values for diff
+  const oldBrickClass = point.enrichment.brickClass?.label ?? null;
+  const oldBrickUri = point.enrichment.brickClass?.uri ?? null;
+  const oldBrickCategory = point.enrichment.brickClass?.category ?? null;
+  const oldHaystackTags = [...point.enrichment.haystackTags.marker];
+  const oldHaystackValues = { ...point.enrichment.haystackTags.value };
+  const oldConfidence = point.enrichment.confidence;
+  const oldConfidenceLevel = point.enrichment.confidenceLevel;
+  const oldSource = point.enrichment.enrichmentSource;
+  const oldTagCount = oldHaystackTags.length + Object.keys(oldHaystackValues).length + (oldBrickClass ? 1 : 0);
+
+  const ctx = buildAIContext(point, results);
+  const aiResult = await ai.enhance(point.parsed, ctx);
   if (aiResult && aiResult.confidence > point.enrichment.confidence) {
     point.enrichment = aiResult;
+
+    // Persist to cache + SQLite for future use
     const cacheKey = cache.buildKey(point.parsed.objectName, point.parsed.objectType, point.parsed.units);
     cache.set(cacheKey, aiResult);
+    if (aiResult.brickClass) {
+      learning.recordCorrection(
+        pointId, point.parsed.objectName, point.parsed.objectType, point.parsed.units,
+        oldBrickClass ? { uri: oldBrickUri!, label: oldBrickClass, category: oldBrickCategory ?? 'Unknown' } : null,
+        aiResult.brickClass, aiResult.haystackTags,
+        siteId, point.parsed.vendorName, point.parsed.modelName,
+      );
+    }
+
+    const newTagCount = aiResult.haystackTags.marker.length + Object.keys(aiResult.haystackTags.value).length + (aiResult.brickClass ? 1 : 0);
+    const addedTags = aiResult.haystackTags.marker.filter(t => !oldHaystackTags.includes(t));
+
     res.json({
       success: true,
       enhanced: true,
       pointId,
+      // New values
       brickClass: aiResult.brickClass?.label,
       brickUri: aiResult.brickClass?.uri,
+      brickCategory: aiResult.brickClass?.category,
       haystackTags: aiResult.haystackTags.marker,
+      haystackValues: aiResult.haystackTags.value,
       confidence: aiResult.confidence,
       confidenceLevel: aiResult.confidenceLevel,
       source: aiResult.enrichmentSource,
+      tagCount: newTagCount,
+      // Diff data
+      diff: {
+        oldBrickClass,
+        oldConfidence,
+        oldConfidenceLevel,
+        oldTagCount,
+        oldHaystackTags,
+        addedTags,
+        confidenceDelta: +(aiResult.confidence - oldConfidence).toFixed(2),
+        tagCountDelta: newTagCount - oldTagCount,
+      },
     });
   } else {
     res.json({ success: true, enhanced: false, reason: 'AI could not improve confidence' });
@@ -411,7 +560,8 @@ app.post('/api/enhance-with-ai', async (req, res) => {
 
   let enhanced = 0;
   for (const point of needsAI) {
-    const aiResult = await ai.enhance(point.parsed);
+    const ctx = buildAIContext(point, results);
+    const aiResult = await ai.enhance(point.parsed, ctx);
     if (aiResult && aiResult.confidence > point.enrichment.confidence) {
       point.enrichment = aiResult;
       const cacheKey = cache.buildKey(point.parsed.objectName, point.parsed.objectType, point.parsed.units);
@@ -495,6 +645,9 @@ app.post('/api/update-inference', (req, res) => {
     point.enrichment.brickClass,
     correctedBrickClass,
     correctedTags,
+    siteId,
+    point.parsed.vendorName,
+    point.parsed.modelName,
   );
 
   // Update the in-memory result

@@ -128,9 +128,54 @@ tr:hover td{background:#f8fafc}
 /* Toast */
 .toast{position:fixed;bottom:24px;right:24px;padding:12px 20px;background:var(--sidebar);color:#e2e8f0;border-radius:8px;font-size:12px;z-index:2000;box-shadow:0 8px 32px rgba(0,0,0,.2);transition:.3s;transform:translateY(80px);opacity:0;border:1px solid #334155}
 .toast.show{transform:translateY(0);opacity:1}
-/* Progress bar for Ollama */
-.progress-bar{height:3px;background:#e2e8f0;border-radius:2px;overflow:hidden;margin-top:8px}
-.progress-bar .fill{height:100%;background:var(--accent);border-radius:2px;transition:width .3s}
+/* Tag completeness indicator */
+.tag-meter{display:inline-flex;align-items:center;gap:5px}
+.tag-meter-bar{width:32px;height:5px;background:#e2e8f0;border-radius:3px;overflow:hidden;position:relative}
+.tag-meter-fill{height:100%;border-radius:3px;transition:width .3s}
+.tag-meter-fill.tm-good{background:var(--success)}.tag-meter-fill.tm-partial{background:var(--warning)}.tag-meter-fill.tm-low{background:var(--danger)}
+.tag-meter-count{font-size:9px;font-weight:700;min-width:14px;text-align:center}
+.tag-meter-count.tc-good{color:var(--success)}.tag-meter-count.tc-partial{color:var(--warning)}.tag-meter-count.tc-low{color:var(--danger)}
+/* BRICK cell */
+.brick-cell{display:flex;flex-direction:column;gap:2px}
+.brick-cat{font-size:9px;color:var(--text-light);font-weight:600;text-transform:uppercase;letter-spacing:.3px}
+/* Tag popover */
+.tag-cell{position:relative}
+.tag-preview{display:flex;flex-wrap:wrap;gap:3px;align-items:center;cursor:default}
+.tag-more{background:var(--accent-bg);color:var(--accent);padding:2px 6px;border-radius:3px;font-size:9px;font-weight:600;cursor:pointer;border:1px solid rgba(13,148,136,.15)}
+.tag-more:hover{background:rgba(13,148,136,.15)}
+.tag-popover{display:none;position:absolute;top:100%;left:0;z-index:100;background:var(--card);border:1px solid var(--card-border);border-radius:8px;box-shadow:0 12px 40px rgba(0,0,0,.12);padding:14px 16px;min-width:280px;max-width:380px;margin-top:4px}
+.tag-popover.show{display:block}
+.tag-popover::before{content:'';position:absolute;top:-6px;left:20px;width:10px;height:10px;background:var(--card);border-left:1px solid var(--card-border);border-top:1px solid var(--card-border);transform:rotate(45deg)}
+.tp-section{margin-bottom:10px}
+.tp-section:last-child{margin-bottom:0}
+.tp-label{font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--text-light);margin-bottom:5px}
+.tp-tags{display:flex;flex-wrap:wrap;gap:3px}
+.tp-tag-brick{background:#f0fdfa;color:var(--accent);padding:3px 8px;border-radius:4px;font-size:10px;font-weight:600;border:1px solid rgba(13,148,136,.15)}
+.tp-tag-marker{background:#f8fafc;color:var(--text);padding:2px 7px;border-radius:3px;font-size:10px;border:1px solid var(--card-border)}
+.tp-tag-equip{background:#eff6ff;color:var(--info);padding:2px 7px;border-radius:3px;font-size:10px;border:1px solid rgba(37,99,235,.12);font-weight:500}
+.tp-tag-value{background:#fefce8;color:#854d0e;padding:2px 7px;border-radius:3px;font-size:10px;border:1px solid rgba(202,138,4,.12)}
+/* Enhanced Claude button for low-tag rows */
+.btn-claude-urgent{background:linear-gradient(135deg,#6366f1,#8b5cf6);color:#fff;padding:5px 12px;border-radius:5px;font-size:11px;font-weight:600;border:none;cursor:pointer;animation:gentlePulse 2s ease-in-out infinite}
+.btn-claude-urgent:hover{background:linear-gradient(135deg,#4f46e5,#7c3aed)}
+@keyframes gentlePulse{0%,100%{box-shadow:0 0 0 0 rgba(99,102,241,.3)}50%{box-shadow:0 0 0 4px rgba(99,102,241,0)}}
+/* Ollama progress banner */
+.ollama-banner{background:linear-gradient(135deg,#0f172a,#1e293b);border:1px solid #334155;border-radius:var(--radius);padding:16px 20px;margin-bottom:16px;color:#e2e8f0;position:relative;overflow:hidden}
+.ollama-banner .ob-top{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px}
+.ollama-banner .ob-title{font-weight:600;font-size:13px;display:flex;align-items:center;gap:8px}
+.ollama-banner .ob-title .pulse{width:8px;height:8px;border-radius:50%;background:#14b8a6;animation:pulse 1.5s ease-in-out infinite}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.3}}
+.ollama-banner .ob-stats{display:flex;gap:16px;font-size:11px;color:#94a3b8}
+.ollama-banner .ob-stats b{color:#e2e8f0}
+.ollama-banner .ob-bar{height:4px;background:#334155;border-radius:2px;overflow:hidden}
+.ollama-banner .ob-bar-fill{height:100%;background:linear-gradient(90deg,#0d9488,#14b8a6);border-radius:2px;transition:width .3s ease-out;width:0%}
+.ollama-banner .ob-bottom{display:flex;align-items:center;justify-content:space-between;margin-top:8px;font-size:11px;color:#64748b}
+.btn-stop{background:#dc2626;color:#fff;padding:4px 12px;border:none;border-radius:4px;font-size:11px;font-weight:600;cursor:pointer}
+.btn-stop:hover{background:#b91c1c}
+/* Row flash animation for updated points */
+@keyframes rowFlash{0%{background:#ecfdf5}100%{background:transparent}}
+tr.row-updated td{animation:rowFlash 1.5s ease-out}
+/* Done banner */
+.ollama-done{background:#ecfdf5;border:1px solid #a7f3d0;border-radius:var(--radius);padding:12px 20px;margin-bottom:16px;color:#065f46;font-size:13px;display:flex;align-items:center;gap:8px}
 </style>
 </head>
 <body>
@@ -202,6 +247,7 @@ tr:hover td{background:#f8fafc}
 const AUTH='Basic '+btoa('admin:changeme');
 let currentSiteId=null,currentDeviceId=null,currentDevicePoints=[];
 let editingPointId=null;
+let ollamaStream=null, ollamaStreamId=null;
 
 function $(s){return document.querySelector(s)}
 function $$(s){return document.querySelectorAll(s)}
@@ -244,32 +290,178 @@ function pickFile(f){
   $('#parseBtn').disabled=false;
 }
 
-// ---- Parse + Enrich ----
+// ---- Parse + Enrich (two-phase: instant patterns → progressive Ollama) ----
 $('#parseBtn').addEventListener('click',async()=>{
   if(!selectedFile)return;
   const btn=$('#parseBtn');btn.disabled=true;btn.textContent='Parsing...';
   $('#contentArea').innerHTML='<div class="loading"><div class="spinner"></div>Parsing discovery report...</div>';
   try{
+    // Phase 1: Parse
     const form=new FormData();form.append('file',selectedFile);form.append('siteName',$('#siteName').value||'Site');
     const data=await fetch('/api/parse',{method:'POST',headers:{'Authorization':AUTH},body:form}).then(r=>r.json());
     if(data.error)throw new Error(data.error);
     currentSiteId=data.siteId;
     toast('Parsed '+data.stats.totalObjects.toLocaleString()+' objects');
 
-    btn.textContent='Enriching + Ollama AI...';
-    $('#contentArea').innerHTML='<div class="loading"><div class="spinner"></div>Pattern matching + Ollama AI enrichment...<br><small style="color:var(--text-light)">This may take a minute for large files</small></div>';
+    // Phase 2: Pattern enrichment (instant)
+    btn.textContent='Enriching...';
     const enrichData=await api('/api/enrich',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({siteId:currentSiteId})});
+    toast(`Pattern matched: ${enrichData.summary.high} high, ${enrichData.summary.medium} med — ${enrichData.ollamaCandidates} candidates for Ollama`,4000);
 
-    const oMsg=enrichData.ollamaEnhanced>0?` | Ollama enhanced ${enrichData.ollamaEnhanced} points`:'';
-    toast(`Enriched: ${enrichData.summary.high} high, ${enrichData.summary.medium} med, ${enrichData.summary.low} low${oMsg}`,5000);
-
+    // Show results immediately
     const devData=await api('/api/devices?siteId='+currentSiteId);
     renderDeviceList(devData.devices);
     $('#allPointsBtn').style.display='block';
-    loadAllPoints();
+    await loadAllPoints();
+
+    // Phase 3: Start progressive Ollama enhancement via SSE
+    if(enrichData.ollamaCandidates>0){
+      startOllamaStream(enrichData.ollamaCandidates);
+    }
   }catch(e){toast('Error: '+e.message);$('#contentArea').innerHTML='<div class="empty"><div class="empty-icon">&#10060;</div><h3>Error</h3><p>'+esc(e.message)+'</p></div>'}
   finally{btn.disabled=false;btn.textContent='Parse & Enrich'}
 });
+
+// ---- Ollama SSE Stream ----
+function startOllamaStream(candidateCount){
+  stopOllamaStream();
+
+  // Insert progress banner at top of content
+  const banner=document.createElement('div');
+  banner.id='ollamaBanner';
+  banner.className='ollama-banner';
+  banner.innerHTML=`
+    <div class="ob-top">
+      <span class="ob-title"><span class="pulse"></span> Ollama AI Enhancing</span>
+      <button class="btn-stop" onclick="stopOllamaStream()">Stop</button>
+    </div>
+    <div class="ob-bar"><div class="ob-bar-fill" id="obFill"></div></div>
+    <div class="ob-bottom">
+      <span id="obStatus">Starting... 0/${candidateCount} points</span>
+      <span class="ob-stats"><b id="obEnhanced">0</b> improved &middot; <b id="obPct">0</b>%</span>
+    </div>
+  `;
+  const content=$('#contentArea');
+  content.insertBefore(banner,content.children[1]||null); // after h3
+
+  // Open SSE (pass auth via query param since EventSource can't send headers)
+  const authParam=btoa('admin:changeme');
+  const url=`/api/enrich-stream?siteId=${currentSiteId}&maxPoints=500&auth=${authParam}`;
+  const es=new EventSource(url);
+  ollamaStream=es;
+
+  es.addEventListener('start',e=>{
+    const d=JSON.parse(e.data);
+    ollamaStreamId=d.streamId;
+  });
+
+  es.addEventListener('progress',e=>{
+    const d=JSON.parse(e.data);
+    updateBanner(d.processed,d.enhanced,d.total,d.pct);
+  });
+
+  es.addEventListener('point',e=>{
+    const d=JSON.parse(e.data);
+    updateBanner(d.processed,d.enhanced,d.total,Math.round(d.processed*100/d.total));
+    // Update the row in the table if visible
+    updateRowInPlace(d);
+    // Update stats counters
+    updateStatsFromStream();
+  });
+
+  es.addEventListener('skip',e=>{
+    const d=JSON.parse(e.data);
+    updateBanner(d.processed,0,d.total,Math.round(d.processed*100/d.total));
+  });
+
+  es.addEventListener('done',e=>{
+    const d=JSON.parse(e.data);
+    es.close();ollamaStream=null;ollamaStreamId=null;
+    const banner=$('#ollamaBanner');
+    if(banner){
+      banner.className='ollama-done';
+      banner.innerHTML=`<span style="font-size:16px">&#9989;</span> Ollama complete: <b>${d.enhanced}</b> of ${d.total} points improved`;
+      setTimeout(()=>banner.remove(),8000);
+    }
+    toast(`Ollama done: ${d.enhanced}/${d.total} improved`);
+    // Refresh stats
+    updateStatsFromStream();
+  });
+
+  es.onerror=()=>{
+    es.close();ollamaStream=null;
+    const banner=$('#ollamaBanner');
+    if(banner){banner.className='ollama-done';banner.innerHTML='Ollama stream ended';setTimeout(()=>banner.remove(),3000)}
+  };
+}
+
+function stopOllamaStream(){
+  if(ollamaStream){ollamaStream.close();ollamaStream=null}
+  if(ollamaStreamId){
+    fetch('/api/enrich-stream/cancel',{method:'POST',headers:{'Authorization':AUTH,'Content-Type':'application/json'},body:JSON.stringify({streamId:ollamaStreamId})}).catch(()=>{});
+    ollamaStreamId=null;
+  }
+  const banner=$('#ollamaBanner');
+  if(banner){banner.className='ollama-done';banner.innerHTML='<span style="font-size:16px">&#9940;</span> Ollama enhancement stopped';setTimeout(()=>banner.remove(),3000)}
+}
+
+function updateBanner(processed,enhanced,total,pct){
+  const fill=$('#obFill');if(fill)fill.style.width=pct+'%';
+  const status=$('#obStatus');if(status)status.textContent=`Processing... ${processed}/${total} points`;
+  const enh=$('#obEnhanced');if(enh)enh.textContent=enhanced;
+  const pctEl=$('#obPct');if(pctEl)pctEl.textContent=pct;
+}
+
+function updateRowInPlace(d){
+  // Find the row by pointId and update it live
+  const rows=$$('tr[data-pointid="'+d.pointId+'"]');
+  rows.forEach(tr=>{
+    // Update BRICK class cell
+    const cells=tr.querySelectorAll('td');
+    if(cells.length>=6){
+      // BRICK class (index depends on table type — find by content)
+      const brickCell=tr.querySelector('.brick-tag')?.parentElement;
+      if(brickCell)brickCell.innerHTML='<span class="brick-tag">'+esc(d.brickClass||'')+'</span>';
+      // Confidence cell
+      const confCell=tr.querySelector('.conf')?.parentElement;
+      if(confCell)confCell.innerHTML='<span class="conf '+confClass(d.confidenceLevel)+'">'+(d.confidence*100).toFixed(0)+'%</span>';
+      // Source cell
+      const srcCell=tr.querySelector('.src-tag')?.parentElement;
+      if(srcCell)srcCell.innerHTML=srcTag(d.source);
+    }
+    // Flash the row green
+    tr.classList.remove('row-updated');
+    void tr.offsetWidth; // force reflow
+    tr.classList.add('row-updated');
+  });
+}
+
+async function updateStatsFromStream(){
+  // Lightweight refresh of just the stats counters
+  try{
+    if(currentDeviceId){
+      const data=await api(`/api/device-points?siteId=${currentSiteId}&deviceId=${currentDeviceId}`);
+      const s=data.summary;
+      updateStatCards(s);
+    }else if(currentSiteId){
+      const p=new URLSearchParams({siteId:currentSiteId,limit:'1'});
+      const data=await api('/api/all-points?'+p);
+      updateStatCards(data.summary);
+    }
+  }catch{}
+}
+
+function updateStatCards(s){
+  const cards=$$('.stat-num');
+  if(cards.length>=5){
+    const total=s.total||(s.high+s.medium+s.low+s.noMatch);
+    cards[0].textContent=total;
+    cards[1].textContent=s.high;
+    cards[2].textContent=s.medium;
+    cards[3].textContent=s.low;
+    cards[4].textContent=s.noMatch;
+  }
+}
 
 function renderDeviceList(devices){
   const el=$('#deviceList');
@@ -313,7 +505,7 @@ function renderDeviceView(data){
       <div class="table-wrap">
         <table><thead><tr>
           <th>Point Name</th><th>Type</th><th>Units</th>
-          <th>BRICK Class</th><th>Haystack</th><th>Confidence</th><th>Source</th><th style="width:100px">Actions</th>
+          <th>BRICK Class</th><th>Tags</th><th>Confidence</th><th>Source</th><th style="width:100px">Actions</th>
         </tr></thead><tbody id="pointsBody"></tbody></table>
       </div>
       <div class="actions">
@@ -348,21 +540,70 @@ function switchTab(name,tabEl){
 
 function renderPointsTable(points){
   const body=$('#pointsBody');if(!body)return;
-  body.innerHTML=points.map(p=>`
-    <tr data-conf="${p.confidenceLevel}" data-search="${(p.objectName+' '+(p.brickClass||'')+' '+(p.haystackTags||[]).join(' ')+' '+(p.deviceId||'')).toLowerCase()}">
-      <td title="${esc(p.objectName)}"><strong>${esc(p.objectName)}</strong>${p.equipmentRef?'<br><span style="color:var(--text-light);font-size:10px">'+esc(p.equipmentRef)+'</span>':''}</td>
-      <td style="color:var(--text-muted)">${esc(p.objectType)}</td>
-      <td style="color:var(--text-muted)">${esc(p.units||'-')}</td>
-      <td>${p.brickClass?'<span class="brick-tag">'+esc(p.brickClass)+'</span>':'<span style="color:var(--text-light)">-</span>'}</td>
-      <td>${(p.haystackTags||[]).slice(0,5).map(t=>'<span class="hs-tag">'+esc(t)+'</span>').join('')}</td>
-      <td><span class="conf ${confClass(p.confidenceLevel)}">${(p.confidence*100).toFixed(0)}%</span></td>
-      <td>${srcTag(p.source)}</td>
-      <td style="white-space:nowrap">
-        <button class="btn btn-edit btn-sm" onclick='editPoint(${JSON.stringify(p).replace(/'/g,"&#39;")})'>Edit</button>
-        <button class="btn btn-claude btn-sm" onclick="aiEnhanceOne('${p.pointId}',this)">Claude</button>
-      </td>
-    </tr>`).join('');
+  body.innerHTML=points.map(p=>renderPointRow(p,false)).join('');
   updateCount();
+  initPopovers();
+}
+
+function renderPointRow(p,showDevice){
+  const tc=p.tagCount||0;
+  const tmClass=tc>=6?'tm-good':tc>=3?'tm-partial':'tm-low';
+  const tcClass=tc>=6?'tc-good':tc>=3?'tc-partial':'tc-low';
+  const tmPct=Math.min(100,Math.round(tc*100/10));
+  const equipKw=['vav','ahu','chiller','chilled','pump','compressor','vfd','boiler','coolingTower','fcu','condenser','hot','motor'];
+  const markers=(p.haystackTags||[]).filter(t=>!equipKw.includes(t));
+  const equipTags=(p.haystackTags||[]).filter(t=>equipKw.includes(t));
+  const valEntries=Object.entries(p.haystackValues||{});
+  const allTagCount=markers.length+equipTags.length+valEntries.length+(p.brickClass?1:0);
+  const previewTags=(p.haystackTags||[]).slice(0,3);
+  const moreCount=allTagCount-previewTags.length-(p.brickClass?1:0);
+  const isUrgent=tc<4;
+  const pJson=JSON.stringify(p).replace(/'/g,"&#39;");
+
+  return `<tr data-pointid="${p.pointId}" data-conf="${p.confidenceLevel}" data-search="${(p.objectName+' '+(p.brickClass||'')+' '+(p.haystackTags||[]).join(' ')+' '+(p.deviceId||'')).toLowerCase()}">
+    ${showDevice?'<td style="font-size:10px;color:var(--text-muted)" title="'+esc(p.deviceId)+'">'+esc(p.deviceId)+'</td>':''}
+    <td title="${esc(p.objectName)}"><strong>${esc(p.objectName)}</strong>${p.equipmentRef?'<br><span style="color:var(--text-light);font-size:10px">'+esc(p.equipmentRef)+'</span>':''}</td>
+    <td style="color:var(--text-muted)">${esc(p.objectType)}</td>
+    <td style="color:var(--text-muted)">${esc(p.units||'-')}</td>
+    <td>${p.brickClass?`<div class="brick-cell">${p.brickCategory?'<span class="brick-cat">'+esc(p.brickCategory)+'</span>':''}<span class="brick-tag">${esc(p.brickClass)}</span></div>`:'<span style="color:var(--text-light)">-</span>'}</td>
+    <td class="tag-cell">
+      <div class="tag-preview" onmouseenter="showPopover(this)" onmouseleave="hidePopover(this)">
+        ${previewTags.map(t=>'<span class="hs-tag">'+esc(t)+'</span>').join('')}
+        ${moreCount>0?'<span class="tag-more">+'+moreCount+'</span>':''}
+        <div class="tag-meter"><div class="tag-meter-bar"><div class="tag-meter-fill ${tmClass}" style="width:${tmPct}%"></div></div><span class="tag-meter-count ${tcClass}">${tc}</span></div>
+        <div class="tag-popover" data-popover>
+          ${p.brickClass?'<div class="tp-section"><div class="tp-label">BRICK Ontology</div><div class="tp-tags"><span class="tp-tag-brick">'+esc(p.brickClass)+'</span></div></div>':''}
+          ${markers.length?'<div class="tp-section"><div class="tp-label">Haystack Marker Tags</div><div class="tp-tags">'+markers.map(t=>'<span class="tp-tag-marker">'+esc(t)+'</span>').join('')+'</div></div>':''}
+          ${equipTags.length?'<div class="tp-section"><div class="tp-label">Equipment Context</div><div class="tp-tags">'+equipTags.map(t=>'<span class="tp-tag-equip">'+esc(t)+'</span>').join('')+'</div></div>':''}
+          ${valEntries.length?'<div class="tp-section"><div class="tp-label">Value Tags</div><div class="tp-tags">'+valEntries.map(([k,v])=>'<span class="tp-tag-value">'+esc(k)+'='+esc(v)+'</span>').join('')+'</div></div>':''}
+          ${tc===0?'<div style="color:var(--text-light);font-size:11px;font-style:italic">No tags — use Claude AI to classify</div>':''}
+        </div>
+      </div>
+    </td>
+    <td><span class="conf ${confClass(p.confidenceLevel)}">${(p.confidence*100).toFixed(0)}%</span></td>
+    <td>${srcTag(p.source)}</td>
+    <td style="white-space:nowrap">
+      <button class="btn btn-edit btn-sm" onclick='editPoint(${pJson})'>Edit</button>
+      ${isUrgent?`<button class="btn-claude-urgent" onclick="aiEnhanceOne('${p.pointId}',this)">Claude AI</button>`:`<button class="btn btn-claude btn-sm" onclick="aiEnhanceOne('${p.pointId}',this)">Claude</button>`}
+    </td>
+  </tr>`;
+}
+
+function showPopover(el){
+  const pop=el.querySelector('[data-popover]');
+  if(pop)pop.classList.add('show');
+}
+function hidePopover(el){
+  const pop=el.querySelector('[data-popover]');
+  if(pop)pop.classList.remove('show');
+}
+function initPopovers(){
+  // Close popovers when clicking outside
+  document.addEventListener('click',e=>{
+    if(!e.target.closest('.tag-cell')){
+      $$('.tag-popover.show').forEach(p=>p.classList.remove('show'));
+    }
+  });
 }
 
 function confClass(l){return{HIGH:'conf-high',MEDIUM:'conf-med',LOW:'conf-low',NO_MATCH:'conf-none'}[l]||'conf-none'}
@@ -370,7 +611,11 @@ function confClass(l){return{HIGH:'conf-high',MEDIUM:'conf-med',LOW:'conf-low',N
 function filterTable(){
   const s=($('#searchInput')?.value||'').toLowerCase();
   const c=$('#confFilter')?.value||'';
-  $$('#pointsBody tr').forEach(tr=>{tr.style.display=(!c||tr.dataset.conf===c)&&(!s||tr.dataset.search.includes(s))?'':'none'});
+  $$('#pointsBody tr').forEach(tr=>{
+    // Keep recently enriched rows visible regardless of filter
+    if(tr.dataset.enriched==='true'){tr.style.display='';return}
+    tr.style.display=(!c||tr.dataset.conf===c)&&(!s||tr.dataset.search.includes(s))?'':'none';
+  });
   updateCount();
 }
 function updateCount(){
@@ -403,17 +648,135 @@ async function saveEdit(){
   }catch(e){toast('Error: '+e.message)}
 }
 
-// ---- Claude AI per-row ----
+// ---- Claude AI per-row with inline diff ----
 async function aiEnhanceOne(pointId,btn){
   btn.disabled=true;btn.textContent='...';
+  const row=btn.closest('tr');
   try{
     const data=await api('/api/enhance-point',{method:'POST',headers:{'Content-Type':'application/json'},
       body:JSON.stringify({siteId:currentSiteId,pointId})});
-    if(data.enhanced){
-      toast('Claude: '+data.brickClass+' ('+Math.round(data.confidence*100)+'%)');
-      if(currentDeviceId)selectDevice(currentDeviceId);else loadAllPoints();
-    }else{toast(data.reason||'Claude could not improve');btn.disabled=false;btn.textContent='Claude'}
-  }catch(e){toast('Error: '+e.message);btn.disabled=false;btn.textContent='Claude'}
+    if(data.enhanced && row){
+      // Show inline diff instead of refreshing
+      showEnrichmentDiff(row, data);
+      toast(`Claude: +${data.diff.tagCountDelta} tags, ${Math.round(data.diff.confidenceDelta*100)}% confidence boost`);
+    }else{
+      toast(data.reason||'Claude could not improve');
+      btn.disabled=false;btn.textContent=btn.classList.contains('btn-claude-urgent')?'Claude AI':'Claude';
+    }
+  }catch(e){
+    toast('Error: '+e.message);
+    btn.disabled=false;btn.textContent=btn.classList.contains('btn-claude-urgent')?'Claude AI':'Claude';
+  }
+}
+
+function showEnrichmentDiff(row, data){
+  const d=data.diff;
+  // Mark row as enriched — prevent filter from hiding it
+  row.dataset.enriched='true';
+  row.style.borderLeft='3px solid var(--accent)';
+  row.style.background='rgba(13,148,136,.03)';
+
+  // Update BRICK class cell with diff
+  const brickCell=row.querySelector('.brick-cell')?.parentElement || row.querySelector('.brick-tag')?.parentElement;
+  if(brickCell){
+    let html='<div class="brick-cell">';
+    if(data.brickCategory) html+=`<span class="brick-cat">${esc(data.brickCategory)}</span>`;
+    if(d.oldBrickClass && d.oldBrickClass!==data.brickClass){
+      html+=`<span style="text-decoration:line-through;color:var(--text-light);font-size:10px">${esc(d.oldBrickClass)}</span>`;
+    }
+    html+=`<span class="brick-tag">${esc(data.brickClass)}</span>`;
+    html+='</div>';
+    brickCell.innerHTML=html;
+  }
+
+  // Update confidence cell with animation
+  const confSpan=row.querySelector('.conf');
+  if(confSpan){
+    const oldPct=Math.round(d.oldConfidence*100);
+    const newPct=Math.round(data.confidence*100);
+    confSpan.className='conf '+confClass(data.confidenceLevel);
+    confSpan.innerHTML=`<span style="text-decoration:line-through;opacity:.5;margin-right:4px">${oldPct}%</span>${newPct}%`;
+  }
+
+  // Update tags cell — show added tags highlighted
+  const tagCell=row.querySelector('.tag-cell');
+  if(tagCell){
+    const allTags=data.haystackTags||[];
+    const addedSet=new Set(d.addedTags||[]);
+    const vals=Object.entries(data.haystackValues||{});
+    const tc=data.tagCount||0;
+    const tmClass=tc>=6?'tm-good':tc>=3?'tm-partial':'tm-low';
+    const tcClass=tc>=6?'tc-good':tc>=3?'tc-partial':'tc-low';
+    const tmPct=Math.min(100,Math.round(tc*100/10));
+
+    let html='<div class="tag-preview" onmouseenter="showPopover(this)" onmouseleave="hidePopover(this)">';
+    // Show first 4 tags, highlight new ones
+    const preview=allTags.slice(0,4);
+    preview.forEach(t=>{
+      if(addedSet.has(t)){
+        html+=`<span class="hs-tag" style="background:#ecfdf5;border-color:#a7f3d0;color:#065f46">+${esc(t)}</span>`;
+      }else{
+        html+=`<span class="hs-tag">${esc(t)}</span>`;
+      }
+    });
+    const moreCount=allTags.length-preview.length+vals.length;
+    if(moreCount>0) html+=`<span class="tag-more">+${moreCount}</span>`;
+    // Tag meter
+    html+=`<div class="tag-meter"><div class="tag-meter-bar"><div class="tag-meter-fill ${tmClass}" style="width:${tmPct}%"></div></div><span class="tag-meter-count ${tcClass}">${tc}</span></div>`;
+    // Delta indicator
+    if(d.tagCountDelta>0){
+      html+=`<span style="color:var(--success);font-size:10px;font-weight:700">+${d.tagCountDelta}</span>`;
+    }
+    // Popover with all tags
+    const equipKw=['vav','ahu','chiller','chilled','pump','compressor','vfd','boiler','coolingTower','fcu','condenser','hot','motor'];
+    const markers=allTags.filter(t=>!equipKw.includes(t));
+    const equipTags=allTags.filter(t=>equipKw.includes(t));
+    html+=`<div class="tag-popover" data-popover>`;
+    if(data.brickClass) html+=`<div class="tp-section"><div class="tp-label">BRICK Ontology</div><div class="tp-tags"><span class="tp-tag-brick">${esc(data.brickClass)}</span></div></div>`;
+    if(markers.length) html+=`<div class="tp-section"><div class="tp-label">Haystack Markers</div><div class="tp-tags">${markers.map(t=>addedSet.has(t)?`<span class="tp-tag-marker" style="background:#ecfdf5;border-color:#a7f3d0">+${esc(t)}</span>`:`<span class="tp-tag-marker">${esc(t)}</span>`).join('')}</div></div>`;
+    if(equipTags.length) html+=`<div class="tp-section"><div class="tp-label">Equipment Context</div><div class="tp-tags">${equipTags.map(t=>addedSet.has(t)?`<span class="tp-tag-equip" style="background:#dbeafe;border-color:#93c5fd">+${esc(t)}</span>`:`<span class="tp-tag-equip">${esc(t)}</span>`).join('')}</div></div>`;
+    if(vals.length) html+=`<div class="tp-section"><div class="tp-label">Value Tags</div><div class="tp-tags">${vals.map(([k,v])=>`<span class="tp-tag-value">${esc(k)}=${esc(v)}</span>`).join('')}</div></div>`;
+    html+=`</div></div>`;
+    tagCell.innerHTML=html;
+  }
+
+  // Update source cell
+  const srcCell=row.querySelector('.src-tag')?.parentElement;
+  if(srcCell) srcCell.innerHTML=srcTag(data.source);
+
+  // Replace action buttons with dismiss
+  const actCell=row.querySelector('td:last-child');
+  if(actCell){
+    actCell.innerHTML=`<button class="btn btn-outline btn-sm" onclick="dismissEnrichedRow(this)" title="Remove from view" style="font-size:10px">Dismiss</button>`;
+  }
+
+  // Flash animation
+  row.classList.remove('row-updated');
+  void row.offsetWidth;
+  row.classList.add('row-updated');
+
+  // Auto-dismiss after 30s
+  setTimeout(()=>{
+    if(row.dataset.enriched==='true') dismissEnrichedRow(row.querySelector('td:last-child button'));
+  },30000);
+}
+
+function dismissEnrichedRow(btn){
+  const row=btn?.closest('tr');
+  if(!row) return;
+  row.dataset.enriched='false';
+  // If current filter would hide this row, fade it out
+  const conf=$('#confFilter')?.value||$('#globalConfFilter')?.value||'';
+  if(conf && row.dataset.conf!==conf){
+    row.style.transition='opacity .4s';
+    row.style.opacity='0';
+    setTimeout(()=>row.style.display='none',400);
+  }else{
+    // Refresh the row to normal state
+    row.style.borderLeft='';
+    row.style.background='';
+    if(currentDeviceId)selectDevice(currentDeviceId);else loadAllPoints();
+  }
 }
 
 // ---- Claude AI bulk ----
@@ -464,21 +827,8 @@ function renderAllPointsView(data){
     <div class="table-wrap">
       <table><thead><tr>
         <th>Device</th><th>Point Name</th><th>Type</th><th>Units</th>
-        <th>BRICK Class</th><th>Confidence</th><th>Source</th><th style="width:100px">Actions</th>
-      </tr></thead><tbody>${data.points.map(p=>`
-        <tr>
-          <td style="font-size:10px;color:var(--text-muted)" title="${esc(p.deviceId)}">${esc(p.deviceId)}</td>
-          <td title="${esc(p.objectName)}"><strong>${esc(p.objectName)}</strong>${p.equipmentRef?'<br><span style="color:var(--text-light);font-size:10px">'+esc(p.equipmentRef)+'</span>':''}</td>
-          <td style="color:var(--text-muted)">${esc(p.objectType)}</td>
-          <td style="color:var(--text-muted)">${esc(p.units||'-')}</td>
-          <td>${p.brickClass?'<span class="brick-tag">'+esc(p.brickClass)+'</span>':'-'}</td>
-          <td><span class="conf ${confClass(p.confidenceLevel)}">${(p.confidence*100).toFixed(0)}%</span></td>
-          <td>${srcTag(p.source)}</td>
-          <td style="white-space:nowrap">
-            <button class="btn btn-edit btn-sm" onclick='editPoint(${JSON.stringify(p).replace(/'/g,"&#39;")})'>Edit</button>
-            <button class="btn btn-claude btn-sm" onclick="aiEnhanceOne('${p.pointId}',this)">Claude</button>
-          </td>
-        </tr>`).join('')}
+        <th>BRICK Class</th><th>Tags</th><th>Confidence</th><th>Source</th><th style="width:100px">Actions</th>
+      </tr></thead><tbody>${data.points.map(p=>renderPointRow(p,true)).join('')}
       </tbody></table>
     </div>
     <div class="actions">
@@ -513,8 +863,8 @@ function downloadTD(){
 // ---- CSV ----
 function exportCSV(){
   if(!currentDevicePoints.length){toast('No points');return}
-  const h=['Name','Type','Units','EquipRef','BRICK Class','BRICK URI','Haystack Tags','Confidence','Level','Source','Flagged'];
-  const rows=currentDevicePoints.map(p=>[p.objectName,p.objectType,p.units,p.equipmentRef||'',p.brickClass||'',p.brickUri||'',(p.haystackTags||[]).join(';'),p.confidence,p.confidenceLevel,p.source,p.flaggedForReview?'yes':'no']);
+  const h=['Name','Type','Units','EquipRef','BRICK Category','BRICK Class','BRICK URI','Haystack Markers','Haystack Values','Tag Count','Confidence','Level','Source','Flagged'];
+  const rows=currentDevicePoints.map(p=>[p.objectName,p.objectType,p.units,p.equipmentRef||'',p.brickCategory||'',p.brickClass||'',p.brickUri||'',(p.haystackTags||[]).join(';'),Object.entries(p.haystackValues||{}).map(([k,v])=>k+'='+v).join(';'),p.tagCount||0,p.confidence,p.confidenceLevel,p.source,p.flaggedForReview?'yes':'no']);
   const csv=[h,...rows].map(r=>r.map(c=>'"'+String(c).replace(/"/g,'""')+'"').join(',')).join('\n');
   const b=new Blob([csv],{type:'text/csv'});
   const a=document.createElement('a');a.href=URL.createObjectURL(b);

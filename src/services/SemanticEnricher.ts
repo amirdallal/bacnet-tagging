@@ -46,10 +46,17 @@ export class SemanticEnricher {
     const level = this.classifier.classify(best.confidence);
     const { flagged, reason } = this.classifier.shouldFlag(best.confidence, alternatives.length);
 
+    // Merge equipment context tags into the match
+    const equipTags = this.extractEquipmentTags(point.objectName);
+    const mergedMarkers = [...best.pattern.haystackTags.marker];
+    for (const t of equipTags) {
+      if (!mergedMarkers.includes(t)) mergedMarkers.push(t);
+    }
+
     return {
       pointId: point.id,
       brickClass: best.pattern.brickClass,
-      haystackTags: best.pattern.haystackTags,
+      haystackTags: { marker: mergedMarkers, value: best.pattern.haystackTags.value },
       confidence: best.confidence,
       confidenceLevel: level,
       matchedPattern: best.pattern.id,
@@ -68,6 +75,38 @@ export class SemanticEnricher {
     return points.map(p => this.enrich(p));
   }
 
+  /** Equipment keywords to extract as Haystack tags even on partial matches */
+  private static readonly EQUIP_KEYWORDS: Array<{ regex: RegExp; tags: string[] }> = [
+    { regex: /\bVAV\b/i, tags: ['vav', 'hvac', 'equip'] },
+    { regex: /\bAHU\b/i, tags: ['ahu', 'hvac', 'equip'] },
+    { regex: /\b(Chiller|CH[-_]?\d)/i, tags: ['chiller', 'hvac', 'equip'] },
+    { regex: /\bCHWP\b/i, tags: ['chilled', 'water', 'pump', 'equip'] },
+    { regex: /\bCWP\b/i, tags: ['condenser', 'water', 'pump', 'equip'] },
+    { regex: /\bHWP\b/i, tags: ['hot', 'water', 'pump', 'equip'] },
+    { regex: /\bFCU\b/i, tags: ['fcu', 'hvac', 'equip'] },
+    { regex: /\bBoiler\b/i, tags: ['boiler', 'hvac', 'equip'] },
+    { regex: /\bCooling\s*Tower|CT[-_]?\d/i, tags: ['coolingTower', 'hvac', 'equip'] },
+    { regex: /\bCompressor\b/i, tags: ['compressor', 'equip'] },
+    { regex: /\bVFD\b/i, tags: ['vfd', 'motor', 'equip'] },
+    { regex: /\bPump\b/i, tags: ['pump', 'equip'] },
+  ];
+
+  /**
+   * Extract equipment-related Haystack tags from point name.
+   * Used to add contextual tags even when no full BRICK match is found.
+   */
+  extractEquipmentTags(name: string): string[] {
+    const tags: string[] = [];
+    for (const kw of SemanticEnricher.EQUIP_KEYWORDS) {
+      if (kw.regex.test(name)) {
+        for (const t of kw.tags) {
+          if (!tags.includes(t)) tags.push(t);
+        }
+      }
+    }
+    return tags;
+  }
+
   private findMatches(point: ParsedPoint): { pattern: SemanticPattern; confidence: number }[] {
     const results: { pattern: SemanticPattern; confidence: number }[] = [];
     const name = point.objectName;
@@ -77,11 +116,21 @@ export class SemanticEnricher {
     const stripped = name.replace(/_\d+$/, '');
     // Expand underscores to spaces for matching: "zone_temp" → "zone temp"
     const spaced = stripped.replace(/_/g, ' ');
+    // Strip "BACnet" / "DSP" / "Network" prefixes: "BACnet Chiller-1 State" → "Chiller-1 State"
+    const deprefix = name.replace(/^(BACnet|DSP|Network)\s+/i, '');
+
+    const variants = new Set([name, expanded, stripped, spaced, deprefix]);
+    // Also deprefix + expand: "BACnet CHWP-1 VFD Output Current" → "CHWP-1 VFD Output Current"
+    if (deprefix !== name) {
+      variants.add(this.expandCamelCase(deprefix));
+    }
 
     for (const pattern of patterns) {
-      if (pattern.regex.test(name) || (expanded !== name && pattern.regex.test(expanded))
-        || (stripped !== name && pattern.regex.test(stripped))
-        || (spaced !== stripped && pattern.regex.test(spaced))) {
+      let matched = false;
+      for (const v of variants) {
+        if (pattern.regex.test(v)) { matched = true; break; }
+      }
+      if (matched) {
         const adjusted = this.classifier.adjustForUnits(
           pattern.baseConfidence,
           point.units,
@@ -140,9 +189,14 @@ export class SemanticEnricher {
       'hours': { uri: 'Duration_Sensor', label: 'Duration Sensor', cat: 'Status', markers: ['sensor', 'duration', 'point'] },
     };
 
+    // Always extract equipment tags from name
+    const equipTags = this.extractEquipmentTags(point.objectName);
+
     const match = map[units];
     if (match) {
-      const conf = 0.40; // Low but non-zero — unit gives us something
+      const conf = 0.40;
+      const mergedMarkers = [...match.markers];
+      for (const t of equipTags) { if (!mergedMarkers.includes(t)) mergedMarkers.push(t); }
       return {
         pointId: point.id,
         brickClass: {
@@ -150,13 +204,30 @@ export class SemanticEnricher {
           label: match.label,
           category: match.cat,
         },
-        haystackTags: { marker: match.markers, value: {} },
+        haystackTags: { marker: mergedMarkers, value: {} },
         confidence: conf,
         confidenceLevel: this.classifier.classify(conf),
         matchedPattern: 'unit-fallback',
         alternativeMatches: [],
         flaggedForReview: true,
         reviewReason: 'Classified by units only — name pattern not recognized',
+        enrichmentSource: 'unit-fallback',
+        processingTimeMs: performance.now() - start,
+      };
+    }
+
+    // Even with no unit match, if we found equipment tags, return a partial match
+    if (equipTags.length > 0) {
+      return {
+        pointId: point.id,
+        brickClass: null,
+        haystackTags: { marker: ['point', ...equipTags], value: {} },
+        confidence: 0.15,
+        confidenceLevel: 'NO_MATCH',
+        matchedPattern: 'equip-tags-only',
+        alternativeMatches: [],
+        flaggedForReview: true,
+        reviewReason: 'Equipment context tags extracted but no BRICK class matched',
         enrichmentSource: 'unit-fallback',
         processingTimeMs: performance.now() - start,
       };
