@@ -15,12 +15,56 @@ const DB_PATH = path.join(__dirname, '..', '..', 'data', 'corrections.db');
  */
 export class LearningService {
   private db: Database.Database;
+  /** In-memory index of all corrections, loaded once at startup */
+  private correctionMap = new Map<string, EnrichmentResult>();
 
   constructor(private cache: PatternCacheService) {
     mkdirSync(path.dirname(DB_PATH), { recursive: true });
     this.db = new Database(DB_PATH);
     this.db.pragma('journal_mode = WAL');
     this.initSchema();
+    this.loadAllCorrections();
+  }
+
+  /** Load entire corrections table into memory for O(1) lookups */
+  private loadAllCorrections(): void {
+    const rows = this.db.prepare('SELECT * FROM corrections ORDER BY id ASC').all() as Array<Record<string, unknown>>;
+    for (const row of rows) {
+      const result = this.rowToResult(row);
+      const norm = row.object_name_normalized as string;
+      // Index by normalized name, and by numbers-stripped variant
+      this.correctionMap.set(norm, result);
+      const noNums = norm.replace(/\s*\d+\s*/g, ' ').replace(/\s+/g, ' ').trim();
+      if (noNums !== norm && noNums.length > 2) {
+        this.correctionMap.set(noNums, result);
+      }
+    }
+    if (rows.length > 0) {
+      console.log(`  Loaded ${rows.length} learned corrections from SQLite`);
+    }
+  }
+
+  private rowToResult(row: Record<string, unknown>): EnrichmentResult {
+    return {
+      pointId: '',
+      brickClass: {
+        uri: row.corrected_brick_uri as string,
+        label: row.corrected_brick_label as string,
+        category: (row.corrected_brick_category as string) ?? 'Unknown',
+      },
+      haystackTags: {
+        marker: JSON.parse(row.corrected_haystack_markers as string) as string[],
+        value: JSON.parse((row.corrected_haystack_values as string) || '{}') as Record<string, string>,
+      },
+      confidence: 0.98,
+      confidenceLevel: 'HIGH',
+      matchedPattern: null,
+      alternativeMatches: [],
+      flaggedForReview: false,
+      reviewReason: null,
+      enrichmentSource: 'manual',
+      processingTimeMs: 0,
+    };
   }
 
   private initSchema(): void {
@@ -116,10 +160,8 @@ export class LearningService {
       JSON.stringify(correctedHaystackTags.value ?? {}),
     );
 
-    // Update cache
-    const cacheKey = this.cache.buildKey(objectName, objectType, units);
-    this.cache.invalidate(cacheKey);
-    this.cache.set(cacheKey, {
+    // Update in-memory map + cache
+    const result: EnrichmentResult = {
       pointId,
       brickClass: correctedBrickClass,
       haystackTags: correctedHaystackTags,
@@ -131,59 +173,82 @@ export class LearningService {
       reviewReason: null,
       enrichmentSource: 'manual',
       processingTimeMs: 0,
-    });
+    };
+    this.correctionMap.set(normalized, result);
+    const noNums = normalized.replace(/\s*\d+\s*/g, ' ').replace(/\s+/g, ' ').trim();
+    if (noNums !== normalized && noNums.length > 2) this.correctionMap.set(noNums, result);
+
+    const cacheKey = this.cache.buildKey(objectName, objectType, units);
+    this.cache.invalidate(cacheKey);
+    this.cache.set(cacheKey, result);
+  }
+
+  /**
+   * Persist an AI result (Ollama or Claude) to SQLite for future re-uploads.
+   * Lower priority than manual corrections — won't overwrite existing corrections.
+   */
+  recordAIResult(
+    objectName: string,
+    objectType: string,
+    units: string,
+    brickClass: BrickClass,
+    haystackTags: HaystackTags,
+    confidence: number,
+    source: string,
+    vendorName?: string,
+    modelName?: string,
+  ): void {
+    const normalized = this.normalize(objectName);
+
+    // Don't overwrite existing manual corrections
+    if (this.correctionMap.has(normalized)) return;
+
+    this.db.prepare(`
+      INSERT OR IGNORE INTO corrections (
+        point_id, site_id, object_name, object_name_normalized,
+        object_type, units, vendor_name, model_name,
+        original_brick_uri, original_brick_label,
+        corrected_brick_uri, corrected_brick_label, corrected_brick_category,
+        corrected_haystack_markers, corrected_haystack_values
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `).run(
+      source, null, objectName, normalized,
+      objectType, units, vendorName ?? null, modelName ?? null,
+      null, null,
+      brickClass.uri, brickClass.label, brickClass.category ?? null,
+      JSON.stringify(haystackTags.marker),
+      JSON.stringify(haystackTags.value ?? {}),
+    );
+
+    // Update in-memory map
+    const result: EnrichmentResult = {
+      pointId: '',
+      brickClass,
+      haystackTags,
+      confidence: Math.min(confidence, 0.95), // Cap at 0.95 for AI results
+      confidenceLevel: confidence >= 0.80 ? 'HIGH' : confidence >= 0.50 ? 'MEDIUM' : 'LOW',
+      matchedPattern: null,
+      alternativeMatches: [],
+      flaggedForReview: false,
+      reviewReason: null,
+      enrichmentSource: source as EnrichmentResult['enrichmentSource'],
+      processingTimeMs: 0,
+    };
+    this.correctionMap.set(normalized, result);
+    const noNums = normalized.replace(/\s*\d+\s*/g, ' ').replace(/\s+/g, ' ').trim();
+    if (noNums !== normalized && noNums.length > 2) this.correctionMap.set(noNums, result);
   }
 
   /**
    * Find a correction that applies to a given point.
-   * Tries exact normalized match first, then fuzzy (numbers stripped).
+   * Uses in-memory map for O(1) lookup. Tries exact normalized match, then fuzzy.
    */
-  findCorrection(objectName: string, objectType?: string, units?: string): EnrichmentResult | null {
+  findCorrection(objectName: string, _objectType?: string, _units?: string): EnrichmentResult | null {
     const keys = this.fuzzyKeys(objectName);
-
     for (const key of keys) {
-      let row: Record<string, unknown> | undefined;
-
-      if (objectType && units) {
-        row = this.db.prepare(
-          `SELECT * FROM corrections WHERE object_name_normalized = ? AND object_type = ? AND units = ? ORDER BY id DESC LIMIT 1`
-        ).get(key, objectType, units) as Record<string, unknown> | undefined;
-      }
-      if (!row && objectType) {
-        row = this.db.prepare(
-          `SELECT * FROM corrections WHERE object_name_normalized = ? AND object_type = ? ORDER BY id DESC LIMIT 1`
-        ).get(key, objectType) as Record<string, unknown> | undefined;
-      }
-      if (!row) {
-        row = this.db.prepare(
-          `SELECT * FROM corrections WHERE object_name_normalized = ? ORDER BY id DESC LIMIT 1`
-        ).get(key) as Record<string, unknown> | undefined;
-      }
-
-      if (row) {
-        return {
-          pointId: '',
-          brickClass: {
-            uri: row.corrected_brick_uri as string,
-            label: row.corrected_brick_label as string,
-            category: (row.corrected_brick_category as string) ?? 'Unknown',
-          },
-          haystackTags: {
-            marker: JSON.parse(row.corrected_haystack_markers as string) as string[],
-            value: JSON.parse((row.corrected_haystack_values as string) || '{}') as Record<string, string>,
-          },
-          confidence: 0.98,
-          confidenceLevel: 'HIGH',
-          matchedPattern: null,
-          alternativeMatches: [],
-          flaggedForReview: false,
-          reviewReason: null,
-          enrichmentSource: 'manual',
-          processingTimeMs: 0,
-        };
-      }
+      const result = this.correctionMap.get(key);
+      if (result) return result;
     }
-
     return null;
   }
 

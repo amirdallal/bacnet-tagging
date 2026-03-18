@@ -1,0 +1,10 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(python3 -c \":*)",
+      "WebSearch",
+      "Bash(where python)",
+      "Bash(pip install pandas openpyxl)"
+    ]
+  }
+}

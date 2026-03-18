@@ -1,0 +1,16 @@
+# Start a new feature
+./dev.sh start feature/faster-parsing
+
+# Work on it, then save
+./dev.sh save "Optimize parsing speed"
+
+# When it works, merge to main
+./dev.sh merge
+
+# If main breaks, rollback
+./dev.sh rollback
+
+# Check what's going on
+./dev.sh status
+./dev.sh diff
+

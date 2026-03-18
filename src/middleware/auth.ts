@@ -2,8 +2,8 @@ import type { Request, Response, NextFunction } from 'express';
 import { config } from '../config.js';
 
 export function basicAuth(req: Request, res: Response, next: NextFunction): void {
-  // Skip auth for health check and static files
-  if (req.path === '/health') { next(); return; }
+  // Skip auth for health check and static files (UI)
+  if (req.path === '/health' || req.path === '/' || req.path.startsWith('/index.html') || req.path.match(/\.(css|js|ico|png|svg|jpg|woff2?)$/)) { next(); return; }
 
   // Support auth via header or query param (needed for EventSource/SSE)
   let user = '', pass = '';

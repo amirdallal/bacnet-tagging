@@ -1,4 +1,5 @@
 import path from 'path';
+import fs from 'fs';
 import { fileURLToPath } from 'url';
 import express from 'express';
 import cors from 'cors';
@@ -34,9 +35,21 @@ const app = express();
 app.use(cors());
 app.use(express.json({ limit: '100mb' }));
 
-// Serve static UI
-const __dirname = path.dirname(fileURLToPath(import.meta.url));
-app.use(express.static(path.join(__dirname, 'public')));
+// Serve static UI — resolve path robustly for tsx + built ESM
+let __dirname: string;
+try {
+  __dirname = path.dirname(fileURLToPath(import.meta.url));
+} catch {
+  __dirname = path.resolve('src');
+}
+const candidates = [
+  path.join(__dirname, 'public'),
+  path.join(process.cwd(), 'src', 'public'),
+  path.join(process.cwd(), 'public'),
+];
+const publicDir = candidates.find(p => fs.existsSync(path.join(p, 'index.html'))) ?? candidates[0];
+console.log(`  Static UI served from: ${publicDir}`);
+app.use(express.static(publicDir));
 
 app.use(basicAuth);
 
@@ -185,7 +198,7 @@ const activeStreams = new Map<string, AbortController>();
 
 app.get('/api/enrich-stream', async (req, res) => {
   const siteId = req.query.siteId as string;
-  const maxPoints = Math.min(parseInt(req.query.maxPoints as string) || 500, 2000);
+  const maxPoints = parseInt(req.query.maxPoints as string) || 99999; // Process all candidates
   if (!siteId) { res.status(400).json({ error: 'siteId required' }); return; }
 
   const results = enrichedResults.get(siteId);
@@ -228,9 +241,11 @@ app.get('/api/enrich-stream', async (req, res) => {
   let enhanced = 0;
 
   // Send initial event
+  const streamStart = performance.now();
   const send = (event: string, data: unknown) => {
     if (!abortController.signal.aborted) {
-      res.write(`event: ${event}\ndata: ${JSON.stringify(data)}\n\n`);
+      const enriched = typeof data === 'object' && data !== null ? { ...data as Record<string, unknown>, elapsedMs: Math.round(performance.now() - streamStart) } : data;
+      res.write(`event: ${event}\ndata: ${JSON.stringify(enriched)}\n\n`);
     }
   };
 
@@ -253,6 +268,14 @@ app.get('/api/enrich-stream', async (req, res) => {
           point.enrichment = aiResult;
           const cacheKey = cache.buildKey(point.parsed.objectName, point.parsed.objectType, point.parsed.units);
           cache.set(cacheKey, aiResult);
+          // Persist to SQLite for future re-uploads
+          if (aiResult.brickClass) {
+            learning.recordAIResult(
+              point.parsed.objectName, point.parsed.objectType, point.parsed.units,
+              aiResult.brickClass, aiResult.haystackTags, aiResult.confidence,
+              'ai-ollama', point.parsed.vendorName, point.parsed.modelName,
+            );
+          }
           enhanced++;
 
           // Send per-point update
