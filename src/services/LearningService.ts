@@ -6,7 +6,7 @@ import type { BrickClass, HaystackTags, EnrichmentResult } from '../types/enrich
 import type { PatternCacheService } from './PatternCacheService.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
-const DB_PATH = path.join(__dirname, '..', '..', 'data', 'corrections.db');
+const DB_PATH = path.join(process.cwd(), 'data', 'corrections.db');
 
 /**
  * Persistent learning service backed by SQLite.

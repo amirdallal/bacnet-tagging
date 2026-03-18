@@ -357,10 +357,97 @@ function buildAIContext(point: EnrichedPoint, allResults: EnrichedPoint[]): AICo
 }
 
 /** Serialize an enriched point for API responses */
+// ============================================================
+// Shared sort/filter/paginate helper
+// ============================================================
+type SortField = 'name' | 'type' | 'units' | 'brick' | 'confidence' | 'tags' | 'source' | 'device';
+type SortDir = 'asc' | 'desc';
+
+function sortPoints(points: EnrichedPoint[], sortBy: SortField, sortDir: SortDir): EnrichedPoint[] {
+  const dir = sortDir === 'desc' ? -1 : 1;
+  return [...points].sort((a, b) => {
+    let cmp = 0;
+    switch (sortBy) {
+      case 'name':
+        cmp = a.parsed.objectName.localeCompare(b.parsed.objectName);
+        break;
+      case 'type':
+        cmp = a.parsed.objectType.localeCompare(b.parsed.objectType);
+        break;
+      case 'units':
+        cmp = (a.parsed.units || '').localeCompare(b.parsed.units || '');
+        break;
+      case 'brick':
+        cmp = (a.enrichment.brickClass?.label ?? '').localeCompare(b.enrichment.brickClass?.label ?? '');
+        break;
+      case 'confidence':
+        cmp = a.enrichment.confidence - b.enrichment.confidence;
+        break;
+      case 'tags': {
+        const aCount = a.enrichment.haystackTags.marker.length + Object.keys(a.enrichment.haystackTags.value).length + (a.enrichment.brickClass ? 1 : 0);
+        const bCount = b.enrichment.haystackTags.marker.length + Object.keys(b.enrichment.haystackTags.value).length + (b.enrichment.brickClass ? 1 : 0);
+        cmp = aCount - bCount;
+        break;
+      }
+      case 'source':
+        cmp = (a.enrichment.enrichmentSource ?? '').localeCompare(b.enrichment.enrichmentSource ?? '');
+        break;
+      case 'device':
+        cmp = a.parsed.deviceId.localeCompare(b.parsed.deviceId);
+        break;
+    }
+    return cmp * dir;
+  });
+}
+
+function filterPoints(
+  results: EnrichedPoint[],
+  opts: { search?: string; confidence?: string; source?: string; units?: string; objectType?: string }
+): EnrichedPoint[] {
+  let filtered = results.filter(r => r.parsed.supported && !r.parsed.isVendorProprietary);
+
+  if (opts.confidence) {
+    filtered = filtered.filter(r => r.enrichment.confidenceLevel === opts.confidence);
+  }
+  if (opts.source) {
+    filtered = filtered.filter(r => r.enrichment.enrichmentSource === opts.source);
+  }
+  if (opts.units) {
+    const u = opts.units.toLowerCase();
+    filtered = filtered.filter(r => (r.parsed.units || '').toLowerCase().includes(u));
+  }
+  if (opts.objectType) {
+    const t = opts.objectType.toLowerCase();
+    filtered = filtered.filter(r => r.parsed.objectType.toLowerCase().includes(t));
+  }
+  if (opts.search) {
+    const s = opts.search.toLowerCase();
+    filtered = filtered.filter(r =>
+      r.parsed.objectName.toLowerCase().includes(s) ||
+      (r.enrichment.brickClass?.label ?? '').toLowerCase().includes(s) ||
+      r.parsed.deviceId.toLowerCase().includes(s) ||
+      (r.parsed.equipmentRef ?? '').toLowerCase().includes(s) ||
+      r.enrichment.haystackTags.marker.some(t => t.toLowerCase().includes(s))
+    );
+  }
+
+  return filtered;
+}
+
+function buildSummary(points: EnrichedPoint[]) {
+  return {
+    high: points.filter(r => r.enrichment.confidenceLevel === 'HIGH').length,
+    medium: points.filter(r => r.enrichment.confidenceLevel === 'MEDIUM').length,
+    low: points.filter(r => r.enrichment.confidenceLevel === 'LOW').length,
+    noMatch: points.filter(r => r.enrichment.confidenceLevel === 'NO_MATCH').length,
+  };
+}
+
 function serializePoint(r: EnrichedPoint) {
   return {
     pointId: r.parsed.id,
     deviceId: r.parsed.deviceId,
+    objectId: r.parsed.objectId,
     objectName: r.parsed.objectName,
     objectType: r.parsed.objectType,
     units: r.parsed.units,
@@ -422,22 +509,43 @@ app.get('/api/devices', (req, res) => {
 app.get('/api/device-points', (req, res) => {
   const siteId = req.query.siteId as string;
   const deviceId = req.query.deviceId as string;
+  const sortBy = (req.query.sortBy as SortField) || 'confidence';
+  const sortDir = (req.query.sortDir as SortDir) || 'asc';
+  const limit = Math.min(parseInt(req.query.limit as string) || 100, 5000);
+  const offset = parseInt(req.query.offset as string) || 0;
+
   if (!siteId || !deviceId) { res.status(400).json({ error: 'siteId and deviceId required' }); return; }
 
   const results = enrichedResults.get(siteId);
   if (!results) { res.status(404).json({ error: 'Enriched results not found. Run /api/enrich first.' }); return; }
 
-  const devicePoints = results.filter(r => r.parsed.deviceId === deviceId);
-  const high = devicePoints.filter(r => r.enrichment.confidenceLevel === 'HIGH').length;
-  const medium = devicePoints.filter(r => r.enrichment.confidenceLevel === 'MEDIUM').length;
-  const low = devicePoints.filter(r => r.enrichment.confidenceLevel === 'LOW').length;
-  const noMatch = devicePoints.filter(r => r.enrichment.confidenceLevel === 'NO_MATCH').length;
-  const needsReview = devicePoints.filter(r => r.enrichment.flaggedForReview).length;
+  const deviceResults = results.filter(r => r.parsed.deviceId === deviceId);
+
+  const filtered = filterPoints(deviceResults, {
+    search: (req.query.search as string) || '',
+    confidence: (req.query.confidence as string) || '',
+    source: (req.query.source as string) || '',
+    units: (req.query.units as string) || '',
+    objectType: (req.query.objectType as string) || '',
+  });
+
+  // Summary is based on ALL device points (before filter)
+  const allSupported = deviceResults.filter(r => r.parsed.supported && !r.parsed.isVendorProprietary);
+  const summary = { total: allSupported.length, ...buildSummary(allSupported), needsReview: allSupported.filter(r => r.enrichment.flaggedForReview).length };
+
+  const sorted = sortPoints(filtered, sortBy, sortDir);
+  const page = sorted.slice(offset, offset + limit);
 
   res.json({
     deviceId,
-    summary: { total: devicePoints.length, high, medium, low, noMatch, needsReview },
-    points: devicePoints.map(serializePoint),
+    total: sorted.length,
+    offset,
+    limit,
+    sortBy,
+    sortDir,
+    hasMore: offset + limit < sorted.length,
+    summary,
+    points: page.map(serializePoint),
   });
 });
 
@@ -446,9 +554,9 @@ app.get('/api/device-points', (req, res) => {
 // ============================================================
 app.get('/api/all-points', (req, res) => {
   const siteId = req.query.siteId as string;
-  const search = ((req.query.search as string) || '').toLowerCase();
-  const confLevel = (req.query.confidence as string) || '';
-  const limit = Math.min(parseInt(req.query.limit as string) || 500, 5000);
+  const sortBy = (req.query.sortBy as SortField) || 'confidence';
+  const sortDir = (req.query.sortDir as SortDir) || 'asc';
+  const limit = Math.min(parseInt(req.query.limit as string) || 100, 5000);
   const offset = parseInt(req.query.offset as string) || 0;
 
   if (!siteId) { res.status(400).json({ error: 'siteId required' }); return; }
@@ -456,33 +564,27 @@ app.get('/api/all-points', (req, res) => {
   const results = enrichedResults.get(siteId);
   if (!results) { res.status(404).json({ error: 'Enriched results not found' }); return; }
 
-  let filtered = results.filter(r => r.parsed.supported && !r.parsed.isVendorProprietary);
+  const filtered = filterPoints(results, {
+    search: (req.query.search as string) || '',
+    confidence: (req.query.confidence as string) || '',
+    source: (req.query.source as string) || '',
+    units: (req.query.units as string) || '',
+    objectType: (req.query.objectType as string) || '',
+  });
 
-  if (confLevel) {
-    filtered = filtered.filter(r => r.enrichment.confidenceLevel === confLevel);
-  }
-  if (search) {
-    filtered = filtered.filter(r =>
-      r.parsed.objectName.toLowerCase().includes(search) ||
-      (r.enrichment.brickClass?.label ?? '').toLowerCase().includes(search) ||
-      r.parsed.deviceId.toLowerCase().includes(search) ||
-      (r.parsed.equipmentRef ?? '').toLowerCase().includes(search)
-    );
-  }
-
-  const total = filtered.length;
-  const high = filtered.filter(r => r.enrichment.confidenceLevel === 'HIGH').length;
-  const medium = filtered.filter(r => r.enrichment.confidenceLevel === 'MEDIUM').length;
-  const low = filtered.filter(r => r.enrichment.confidenceLevel === 'LOW').length;
-  const noMatch = filtered.filter(r => r.enrichment.confidenceLevel === 'NO_MATCH').length;
-
-  const page = filtered.slice(offset, offset + limit);
+  const sorted = sortPoints(filtered, sortBy, sortDir);
+  const total = sorted.length;
+  const summary = buildSummary(sorted);
+  const page = sorted.slice(offset, offset + limit);
 
   res.json({
     total,
     offset,
     limit,
-    summary: { high, medium, low, noMatch },
+    sortBy,
+    sortDir,
+    hasMore: offset + limit < total,
+    summary,
     points: page.map(serializePoint),
   });
 });
@@ -605,7 +707,7 @@ app.post('/api/enhance-with-ai', async (req, res) => {
 // POST /api/generate-td — Generate W3C Thing Descriptions
 // ============================================================
 app.post('/api/generate-td', (req, res) => {
-  const { siteId } = req.body as { siteId?: string };
+  const { siteId, deviceId, pointIds } = req.body as { siteId?: string; deviceId?: string; pointIds?: string[] };
   if (!siteId) { res.status(400).json({ error: 'siteId required' }); return; }
 
   const results = enrichedResults.get(siteId);
@@ -615,11 +717,28 @@ app.post('/api/generate-td', (req, res) => {
     return;
   }
 
-  const tds = tdGen.generateAll(siteId, report.siteName, results);
+  // Filter results if deviceId and/or pointIds provided
+  let filteredResults = results;
+  if (deviceId) {
+    filteredResults = filteredResults.filter(r => r.parsed.deviceId === deviceId);
+  }
+  if (pointIds && pointIds.length > 0) {
+    const pointIdSet = new Set(pointIds);
+    filteredResults = filteredResults.filter(r => pointIdSet.has(r.parsed.id));
+  }
+
+  if (filteredResults.length === 0) {
+    res.status(400).json({ error: 'No points matched the selection' });
+    return;
+  }
+
+  const tds = tdGen.generateAll(siteId, report.siteName, filteredResults);
 
   res.json({
     siteId,
     siteName: report.siteName,
+    deviceId: deviceId ?? null,
+    selectedPoints: pointIds ? pointIds.length : null,
     thingDescriptionCount: tds.length,
     thingDescriptions: tds,
   });

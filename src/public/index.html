@@ -31,7 +31,7 @@ body{font-family:'Inter',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;
 .upload-zone{border:2px dashed #475569;border-radius:var(--radius);padding:24px 12px;text-align:center;cursor:pointer;transition:.2s;margin-bottom:12px}
 .upload-zone:hover,.upload-zone.dragover{border-color:var(--accent);background:rgba(13,148,136,.05)}
 .upload-icon{font-size:28px;margin-bottom:6px;opacity:.7}
-.upload-text{color:var(--sidebar-text);font-size:12px}
+.upload-text{color:var(--sidebar-text);font-size:12px;word-break:break-all}
 .upload-text strong{color:#cbd5e1}
 input[type="file"]{display:none}
 .site-input{width:100%;padding:8px 12px;border:1px solid #475569;border-radius:6px;background:#0f172a;color:#e2e8f0;font-size:12px;margin-bottom:8px}
@@ -143,7 +143,7 @@ tr:hover td{background:#f8fafc}
 .tag-preview{display:flex;flex-wrap:wrap;gap:3px;align-items:center;cursor:default}
 .tag-more{background:var(--accent-bg);color:var(--accent);padding:2px 6px;border-radius:3px;font-size:9px;font-weight:600;cursor:pointer;border:1px solid rgba(13,148,136,.15)}
 .tag-more:hover{background:rgba(13,148,136,.15)}
-.tag-popover{display:none;position:absolute;top:100%;left:0;z-index:100;background:var(--card);border:1px solid var(--card-border);border-radius:8px;box-shadow:0 12px 40px rgba(0,0,0,.12);padding:14px 16px;min-width:280px;max-width:380px;margin-top:4px}
+.tag-popover{display:none;position:fixed;z-index:200;background:var(--card);border:1px solid var(--card-border);border-radius:8px;box-shadow:0 12px 40px rgba(0,0,0,.12);padding:14px 16px;min-width:280px;max-width:380px}
 .tag-popover.show{display:block}
 .tag-popover::before{content:'';position:absolute;top:-6px;left:20px;width:10px;height:10px;background:var(--card);border-left:1px solid var(--card-border);border-top:1px solid var(--card-border);transform:rotate(45deg)}
 .tp-section{margin-bottom:10px}
@@ -158,6 +158,39 @@ tr:hover td{background:#f8fafc}
 .btn-claude-urgent{background:linear-gradient(135deg,#6366f1,#8b5cf6);color:#fff;padding:5px 12px;border-radius:5px;font-size:11px;font-weight:600;border:none;cursor:pointer;animation:gentlePulse 2s ease-in-out infinite}
 .btn-claude-urgent:hover{background:linear-gradient(135deg,#4f46e5,#7c3aed)}
 @keyframes gentlePulse{0%,100%{box-shadow:0 0 0 0 rgba(99,102,241,.3)}50%{box-shadow:0 0 0 4px rgba(99,102,241,0)}}
+/* Selection / checkbox */
+.select-toolbar{display:flex;align-items:center;gap:8px;padding:10px 16px;background:#f0fdfa;border:1px solid rgba(13,148,136,.15);border-radius:var(--radius);margin-bottom:12px;flex-wrap:wrap;transition:all .2s}
+.select-toolbar.hidden{display:none}
+.select-count{font-weight:700;color:var(--accent);font-size:13px}
+.select-summary{display:flex;gap:6px;flex-wrap:wrap;margin-left:8px}
+.select-summary .ss-item{font-size:10px;padding:2px 8px;border-radius:10px;background:var(--card);border:1px solid var(--card-border);color:var(--text-muted)}
+.select-actions{margin-left:auto;display:flex;gap:6px;align-items:center}
+th.cb-col,td.cb-col{width:36px;text-align:center;padding:6px}
+td.cb-col input[type="checkbox"]{width:15px;height:15px;accent-color:var(--accent);cursor:pointer}
+th.cb-col input[type="checkbox"]{width:15px;height:15px;accent-color:var(--accent);cursor:pointer}
+tr.selected-row td{background:rgba(13,148,136,.04)}
+/* Sortable headers */
+th[data-sort]{cursor:pointer;user-select:none;position:relative;padding-right:18px}
+th[data-sort]:hover{background:#eef2ff;color:var(--accent)}
+th .sort-arrow{font-size:9px;margin-left:4px;color:var(--text-light);opacity:.4}
+th.sort-asc .sort-arrow,th.sort-desc .sort-arrow{opacity:1;color:var(--accent)}
+/* Column filter dropdowns */
+.col-filter-btn{display:inline-flex;align-items:center;justify-content:center;width:16px;height:16px;margin-left:3px;border:none;background:transparent;cursor:pointer;font-size:9px;color:var(--text-light);border-radius:3px;vertical-align:middle;padding:0}
+.col-filter-btn:hover{background:#e2e8f0;color:var(--text)}
+.col-filter-btn.active{color:var(--accent);background:var(--accent-bg)}
+.col-filter-drop{display:none;position:fixed;z-index:300;background:var(--card);border:1px solid var(--card-border);border-radius:8px;box-shadow:0 12px 40px rgba(0,0,0,.15);padding:10px;min-width:180px;max-height:280px;overflow-y:auto}
+.col-filter-drop.show{display:block}
+.col-filter-drop label{display:flex;align-items:center;gap:6px;padding:4px 6px;font-size:11px;cursor:pointer;border-radius:4px;color:var(--text)}
+.col-filter-drop label:hover{background:#f8fafc}
+.col-filter-drop input[type="checkbox"]{width:13px;height:13px;accent-color:var(--accent)}
+.col-filter-drop .cf-actions{display:flex;gap:6px;margin-top:8px;padding-top:8px;border-top:1px solid var(--card-border)}
+.col-filter-drop .cf-actions button{flex:1;padding:4px 0;font-size:10px;font-weight:600;border:none;border-radius:4px;cursor:pointer}
+.cf-all{background:#f1f5f9;color:var(--text)}.cf-all:hover{background:#e2e8f0}
+.cf-apply{background:var(--accent);color:#fff}.cf-apply:hover{background:var(--accent-light)}
+/* Load more */
+.load-more{text-align:center;padding:16px}
+.load-more button{padding:10px 32px}
+.load-more .page-info{font-size:11px;color:var(--text-muted);margin-top:6px}
 /* Ollama progress banner */
 .ollama-banner{background:linear-gradient(135deg,#0f172a,#1e293b);border:1px solid #334155;border-radius:var(--radius);padding:16px 20px;margin-bottom:16px;color:#e2e8f0;position:relative;overflow:hidden}
 .ollama-banner .ob-top{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px}
@@ -251,6 +284,20 @@ const AUTH='Basic '+btoa('admin:changeme');
 let currentSiteId=null,currentDeviceId=null,currentDevicePoints=[];
 let editingPointId=null;
 let ollamaStream=null, ollamaStreamId=null;
+
+// Sort/filter/paginate state
+const PAGE_SIZE=100;
+let sortState={field:'confidence',dir:'asc'};
+let filterState={search:'',confidence:'',source:''};
+let pageState={offset:0,total:0,hasMore:false};
+
+// Column filter state: field -> Set of selected values (empty = all)
+let colFilters={};
+// Track unique values per column for filter dropdowns
+let colUniqueValues={};
+
+// Selection state
+let selectedPointIds=new Set();
 
 function $(s){return document.querySelector(s)}
 function $$(s){return document.querySelectorAll(s)}
@@ -501,12 +548,26 @@ async function selectDevice(deviceId,el){
   $$('.dev-item').forEach(i=>i.classList.remove('selected'));
   if(el)el.classList.add('selected');
   currentDeviceId=deviceId;
-  $('#contentArea').innerHTML='<div class="loading"><div class="spinner"></div>Loading...</div>';
+  selectedPointIds.clear(); // reset selection on device switch
+  pageState.offset=0;
+  loadDevicePoints(deviceId,false);
+}
+
+async function loadDevicePoints(deviceId,append){
+  if(!append)$('#contentArea').innerHTML='<div class="loading"><div class="spinner"></div>Loading...</div>';
   try{
-    const data=await api(`/api/device-points?siteId=${currentSiteId}&deviceId=${deviceId}`);
-    currentDevicePoints=data.points;
-    renderDeviceView(data);
-  }catch(e){$('#contentArea').innerHTML='<div class="empty"><div class="empty-icon">&#10060;</div><h3>Error</h3><p>'+esc(e.message)+'</p></div>'}
+    const data=await api('/api/device-points?'+buildQueryParams({deviceId}));
+    pageState.total=data.total;
+    pageState.hasMore=data.hasMore;
+    if(append){
+      currentDevicePoints=currentDevicePoints.concat(data.points);
+      appendRows(data.points,false);
+      updatePageInfo();
+    }else{
+      currentDevicePoints=data.points;
+      renderDeviceView(data);
+    }
+  }catch(e){if(!append)$('#contentArea').innerHTML='<div class="empty"><div class="empty-icon">&#10060;</div><h3>Error</h3><p>'+esc(e.message)+'</p></div>'}
 }
 
 function renderDeviceView(data){
@@ -519,27 +580,40 @@ function renderDeviceView(data){
     <div class="tab-content active" id="tab-points">
       ${renderStats(s)}
       <div class="filters">
-        <input type="text" class="filter-input" id="searchInput" placeholder="Search points..." oninput="filterTable()">
-        <select class="filter-select" id="confFilter" onchange="filterTable()">
-          <option value="">All Levels</option><option value="HIGH">HIGH</option><option value="MEDIUM">MEDIUM</option><option value="LOW">LOW</option><option value="NO_MATCH">NO_MATCH</option>
+        <input type="text" class="filter-input" id="searchInput" placeholder="Search points..." value="${esc(filterState.search)}" oninput="onSearchInput()">
+        <select class="filter-select" id="confFilter" onchange="onFilter()">
+          <option value="">All Levels</option><option value="HIGH" ${filterState.confidence==='HIGH'?'selected':''}>HIGH</option><option value="MEDIUM" ${filterState.confidence==='MEDIUM'?'selected':''}>MEDIUM</option><option value="LOW" ${filterState.confidence==='LOW'?'selected':''}>LOW</option><option value="NO_MATCH" ${filterState.confidence==='NO_MATCH'?'selected':''}>NO_MATCH</option>
         </select>
-        <span class="count-label" id="countLabel"></span>
+        <select class="filter-select" id="sourceFilter" onchange="onFilter()">
+          <option value="">All Sources</option><option value="pattern" ${filterState.source==='pattern'?'selected':''}>Pattern</option><option value="ai-ollama" ${filterState.source==='ai-ollama'?'selected':''}>Ollama</option><option value="ai-claude" ${filterState.source==='ai-claude'?'selected':''}>Claude</option><option value="manual" ${filterState.source==='manual'?'selected':''}>Manual</option>
+        </select>
+        <span class="count-label" id="pageInfo">Showing ${data.points.length} of ${data.total}</span>
+      </div>
+      <div class="select-toolbar ${selectedPointIds.size>0?'':'hidden'}" id="selectToolbar">
+        <span class="select-count" id="selectCount">${selectedPointIds.size} selected</span>
+        <div class="select-summary" id="selectSummary"></div>
+        <div class="select-actions">
+          <button class="btn btn-outline btn-sm" onclick="selectNone()">Clear</button>
+          <button class="btn btn-success btn-sm" onclick="generateTDFromSelected()" id="genTdBtn">Generate TD (${selectedPointIds.size})</button>
+        </div>
       </div>
       <div class="table-wrap">
         <table><thead><tr>
-          <th>Point Name</th><th>Type</th><th>Units</th>
-          <th>BRICK Class</th><th>Tags</th><th>Confidence</th><th>Source</th><th style="width:100px">Actions</th>
-        </tr></thead><tbody id="pointsBody"></tbody></table>
+          <th class="cb-col"><input type="checkbox" id="selectAllCb" onchange="toggleSelectAll(this.checked)" title="Select all visible"></th>
+          <th>Object ID</th>${sortHeader('Point Name','name')}${sortHeader('Type','type')}${sortHeader('Units','units')}
+          ${sortHeader('BRICK Class','brick')}${sortHeader('Tags','tags')}${sortHeader('Confidence','confidence')}${sortHeader('Source','source')}<th style="width:100px">Actions</th>
+        </tr></thead><tbody id="pointsBody">${data.points.map(p=>renderPointRow(p,false)).join('')}</tbody></table>
       </div>
+      ${data.hasMore?`<div class="load-more"><button class="btn btn-outline" onclick="loadMoreRows()">Load More</button><div class="page-info" id="loadMoreInfo">Showing ${data.points.length} of ${data.total}</div></div>`:''}
       <div class="actions">
+        <button class="btn btn-outline btn-sm" onclick="selectFiltered()">Select All Filtered</button>
         <button class="btn btn-claude btn-sm" onclick="aiEnhanceAll()">Claude AI Enhance All</button>
-        <button class="btn btn-primary btn-sm" onclick="switchTab('td',$$('.tab')[1])">Thing Description</button>
         <button class="btn btn-outline btn-sm" onclick="exportCSV()">Export CSV</button>
       </div>
     </div>
     <div class="tab-content" id="tab-td"><div id="tdContent"></div></div>
   `;
-  renderPointsTable(data.points);
+  initPopovers();
 }
 
 function renderStats(s){
@@ -564,7 +638,6 @@ function switchTab(name,tabEl){
 function renderPointsTable(points){
   const body=$('#pointsBody');if(!body)return;
   body.innerHTML=points.map(p=>renderPointRow(p,false)).join('');
-  updateCount();
   initPopovers();
 }
 
@@ -583,16 +656,19 @@ function renderPointRow(p,showDevice){
   const isUrgent=tc<4;
   const pJson=JSON.stringify(p).replace(/'/g,"&#39;");
 
-  return `<tr data-pointid="${p.pointId}" data-conf="${p.confidenceLevel}" data-search="${(p.objectName+' '+(p.brickClass||'')+' '+(p.haystackTags||[]).join(' ')+' '+(p.deviceId||'')).toLowerCase()}">
+  const isChecked=selectedPointIds.has(p.pointId);
+  return `<tr data-pointid="${p.pointId}" data-conf="${p.confidenceLevel}" data-search="${(p.objectName+' '+(p.brickClass||'')+' '+(p.haystackTags||[]).join(' ')+' '+(p.deviceId||'')+' '+(p.objectId||'')).toLowerCase()}" class="${isChecked?'selected-row':''}">
+    ${!showDevice?'<td class="cb-col"><input type="checkbox" '+(isChecked?'checked':'')+' onchange="togglePointSelect(\''+p.pointId+'\',this.checked,this)"></td>':''}
     ${showDevice?'<td style="font-size:10px;color:var(--text-muted)" title="'+esc(p.deviceId)+'">'+esc(p.deviceId)+'</td>':''}
+    <td style="font-size:10px;color:var(--text-muted);font-family:monospace">${esc((p.objectId||'').split(':').pop()||p.objectId||'')}</td>
     <td title="${esc(p.objectName)}"><strong>${esc(p.objectName)}</strong>${p.equipmentRef?'<br><span style="color:var(--text-light);font-size:10px">'+esc(p.equipmentRef)+'</span>':''}</td>
     <td style="color:var(--text-muted)">${esc(p.objectType)}</td>
     <td style="color:var(--text-muted)">${esc(p.units||'-')}</td>
     <td>${p.brickClass?`<div class="brick-cell">${p.brickCategory?'<span class="brick-cat">'+esc(p.brickCategory)+'</span>':''}<span class="brick-tag">${esc(p.brickClass)}</span></div>`:'<span style="color:var(--text-light)">-</span>'}</td>
     <td class="tag-cell">
-      <div class="tag-preview" onmouseenter="showPopover(this)" onmouseleave="hidePopover(this)">
+      <div class="tag-preview">
         ${previewTags.map(t=>'<span class="hs-tag">'+esc(t)+'</span>').join('')}
-        ${moreCount>0?'<span class="tag-more">+'+moreCount+'</span>':''}
+        ${moreCount>0?'<span class="tag-more" onclick="togglePopover(this,event)">+'+moreCount+'</span>':''}
         <div class="tag-meter"><div class="tag-meter-bar"><div class="tag-meter-fill ${tmClass}" style="width:${tmPct}%"></div></div><span class="tag-meter-count ${tcClass}">${tc}</span></div>
         <div class="tag-popover" data-popover>
           ${p.brickClass?'<div class="tp-section"><div class="tp-label">BRICK Ontology</div><div class="tp-tags"><span class="tp-tag-brick">'+esc(p.brickClass)+'</span></div></div>':''}
@@ -612,18 +688,21 @@ function renderPointRow(p,showDevice){
   </tr>`;
 }
 
-function showPopover(el){
-  const pop=el.querySelector('[data-popover]');
-  if(pop)pop.classList.add('show');
-}
-function hidePopover(el){
-  const pop=el.querySelector('[data-popover]');
-  if(pop)pop.classList.remove('show');
+function togglePopover(btn,evt){
+  evt.stopPropagation();
+  // Close all other popovers
+  $$('.tag-popover.show').forEach(p=>p.classList.remove('show'));
+  const pop=btn.parentElement.querySelector('[data-popover]');
+  if(!pop)return;
+  // Position fixed relative to button
+  const rect=btn.getBoundingClientRect();
+  pop.style.top=(rect.bottom+4)+'px';
+  pop.style.left=Math.min(rect.left, window.innerWidth-400)+'px';
+  pop.classList.toggle('show');
 }
 function initPopovers(){
-  // Close popovers when clicking outside
   document.addEventListener('click',e=>{
-    if(!e.target.closest('.tag-cell')){
+    if(!e.target.closest('.tag-more')&&!e.target.closest('.tag-popover')){
       $$('.tag-popover.show').forEach(p=>p.classList.remove('show'));
     }
   });
@@ -631,20 +710,268 @@ function initPopovers(){
 
 function confClass(l){return{HIGH:'conf-high',MEDIUM:'conf-med',LOW:'conf-low',NO_MATCH:'conf-none'}[l]||'conf-none'}
 
-function filterTable(){
-  const s=($('#searchInput')?.value||'').toLowerCase();
-  const c=$('#confFilter')?.value||'';
-  $$('#pointsBody tr').forEach(tr=>{
-    // Keep recently enriched rows visible regardless of filter
-    if(tr.dataset.enriched==='true'){tr.style.display='';return}
-    tr.style.display=(!c||tr.dataset.conf===c)&&(!s||tr.dataset.search.includes(s))?'':'none';
-  });
-  updateCount();
+// ---- Column Filters ----
+const FILTERABLE_COLS={type:'objectType',units:'units',brick:'brickClass',confidence:'confidenceLevel',source:'source'};
+
+function colFilterBtn(field){
+  const isActive=colFilters[field]&&colFilters[field].size>0;
+  return `<button class="col-filter-btn ${isActive?'active':''}" onclick="openColFilter('${field}',this,event)" title="Filter this column">&#9660;</button>`;
 }
-function updateCount(){
-  const v=$$('#pointsBody tr:not([style*="display: none"])').length;
-  const t=$$('#pointsBody tr').length;
-  const el=$('#countLabel');if(el)el.textContent=v+' of '+t;
+
+function openColFilter(field,btn,evt){
+  evt.stopPropagation();
+  // Close any open filter dropdowns
+  $$('.col-filter-drop.show').forEach(d=>d.classList.remove('show'));
+
+  let drop=document.getElementById('cf-'+field);
+  if(!drop){
+    drop=document.createElement('div');
+    drop.id='cf-'+field;
+    drop.className='col-filter-drop';
+    document.body.appendChild(drop);
+  }
+
+  // Get unique values for this column from current points
+  const dataKey=FILTERABLE_COLS[field];
+  const vals=new Set();
+  currentDevicePoints.forEach(p=>{const v=p[dataKey]||'-';vals.add(v)});
+  const sorted=[...vals].sort();
+  const selected=colFilters[field]||new Set();
+
+  drop.innerHTML=sorted.map(v=>`<label><input type="checkbox" value="${esc(v)}" ${selected.size===0||selected.has(v)?'checked':''}>${esc(v)}</label>`).join('')+
+    `<div class="cf-actions"><button class="cf-all" onclick="cfSelectAll('${field}')">All</button><button class="cf-apply" onclick="cfApply('${field}')">Apply</button></div>`;
+
+  // Position
+  const rect=btn.getBoundingClientRect();
+  drop.style.top=(rect.bottom+4)+'px';
+  drop.style.left=Math.min(rect.left,window.innerWidth-220)+'px';
+  drop.classList.add('show');
+}
+
+function cfSelectAll(field){
+  const drop=document.getElementById('cf-'+field);
+  if(!drop)return;
+  drop.querySelectorAll('input[type="checkbox"]').forEach(cb=>cb.checked=true);
+}
+
+function cfApply(field){
+  const drop=document.getElementById('cf-'+field);
+  if(!drop)return;
+  const checked=new Set();
+  drop.querySelectorAll('input[type="checkbox"]:checked').forEach(cb=>checked.add(cb.value));
+  const allChecked=drop.querySelectorAll('input[type="checkbox"]').length===checked.size;
+  if(allChecked){delete colFilters[field]}else{colFilters[field]=checked}
+  drop.classList.remove('show');
+
+  // Apply column filters client-side (works on loaded rows)
+  applyColFilters();
+  // Update filter button active state
+  $$('.col-filter-btn').forEach(b=>{
+    // Re-render is cleaner but for perf just toggle active class
+  });
+}
+
+function applyColFilters(){
+  const rows=$$('#pointsBody tr');
+  let visible=0;
+  rows.forEach(tr=>{
+    const pid=tr.dataset.pointid;
+    const point=currentDevicePoints.find(p=>p.pointId===pid);
+    if(!point){tr.style.display='';visible++;return}
+    let show=true;
+    for(const[field,allowed]of Object.entries(colFilters)){
+      if(!allowed||allowed.size===0)continue;
+      const dataKey=FILTERABLE_COLS[field];
+      const val=point[dataKey]||'-';
+      if(!allowed.has(val)){show=false;break}
+    }
+    tr.style.display=show?'':'none';
+    if(show)visible++;
+  });
+  const info=$('#pageInfo');
+  if(info)info.textContent=`Showing ${visible} of ${pageState.total}`;
+}
+
+// Close column filter dropdowns on outside click
+document.addEventListener('click',e=>{
+  if(!e.target.closest('.col-filter-drop')&&!e.target.closest('.col-filter-btn')){
+    $$('.col-filter-drop.show').forEach(d=>d.classList.remove('show'));
+  }
+});
+
+// ---- Sortable headers ----
+function sortHeader(label,field){
+  const active=sortState.field===field;
+  const cls=active?(sortState.dir==='asc'?'sort-asc':'sort-desc'):'';
+  const arrow=active?(sortState.dir==='asc'?'&#9650;':'&#9660;'):'&#8693;';
+  const filterable=FILTERABLE_COLS[field]?colFilterBtn(field):'';
+  return `<th data-sort="${field}" class="${cls}" onclick="onSort('${field}')">${label}<span class="sort-arrow">${arrow}</span>${filterable}</th>`;
+}
+
+function onSort(field){
+  if(sortState.field===field){
+    sortState.dir=sortState.dir==='asc'?'desc':'asc';
+  }else{
+    sortState.field=field;
+    sortState.dir=field==='confidence'||field==='tags'?'asc':'asc';
+  }
+  pageState.offset=0; // reset to first page
+  refreshCurrentView();
+}
+
+function onFilter(){
+  filterState.search=$('#searchInput')?.value||'';
+  filterState.confidence=$('#confFilter')?.value||'';
+  filterState.source=$('#sourceFilter')?.value||'';
+  pageState.offset=0;
+  refreshCurrentView();
+}
+
+// Debounce search input
+let searchTimer=null;
+function onSearchInput(){
+  clearTimeout(searchTimer);
+  searchTimer=setTimeout(onFilter,300);
+}
+
+function refreshCurrentView(){
+  if(currentDeviceId){
+    loadDevicePoints(currentDeviceId,false);
+  }else{
+    loadAllPoints(false);
+  }
+}
+
+function buildQueryParams(extra={}){
+  const p=new URLSearchParams({siteId:currentSiteId});
+  p.set('sortBy',sortState.field);
+  p.set('sortDir',sortState.dir);
+  p.set('limit',String(PAGE_SIZE));
+  p.set('offset',String(pageState.offset));
+  if(filterState.search)p.set('search',filterState.search);
+  if(filterState.confidence)p.set('confidence',filterState.confidence);
+  if(filterState.source)p.set('source',filterState.source);
+  for(const[k,v]of Object.entries(extra)){if(v)p.set(k,String(v))}
+  return p;
+}
+
+function loadMoreRows(){
+  pageState.offset+=PAGE_SIZE;
+  if(currentDeviceId){
+    loadDevicePoints(currentDeviceId,true);
+  }else{
+    loadAllPoints(true);
+  }
+}
+
+// Client-side filter kept only for enriched row pinning during Ollama stream
+function filterTable(){
+  onFilter();
+}
+
+// ---- Selection ----
+function togglePointSelect(pointId,checked,cb){
+  if(checked){selectedPointIds.add(pointId)}else{selectedPointIds.delete(pointId)}
+  const row=cb?.closest('tr');
+  if(row)row.classList.toggle('selected-row',checked);
+  updateSelectToolbar();
+  updateSelectAllCheckbox();
+}
+
+function toggleSelectAll(checked){
+  // Toggle all VISIBLE rows (respects current filter)
+  $$('#pointsBody tr').forEach(tr=>{
+    if(tr.style.display==='none')return; // skip filtered out
+    const cb=tr.querySelector('.cb-col input[type="checkbox"]');
+    if(!cb)return;
+    const pid=tr.dataset.pointid;
+    if(checked){selectedPointIds.add(pid);cb.checked=true;tr.classList.add('selected-row')}
+    else{selectedPointIds.delete(pid);cb.checked=false;tr.classList.remove('selected-row')}
+  });
+  updateSelectToolbar();
+}
+
+function selectFiltered(){
+  // Select ALL visible (filtered) rows
+  $$('#pointsBody tr').forEach(tr=>{
+    if(tr.style.display==='none')return;
+    const cb=tr.querySelector('.cb-col input[type="checkbox"]');
+    if(!cb)return;
+    const pid=tr.dataset.pointid;
+    selectedPointIds.add(pid);
+    cb.checked=true;
+    tr.classList.add('selected-row');
+  });
+  updateSelectToolbar();
+  updateSelectAllCheckbox();
+  toast(`Selected ${selectedPointIds.size} points`);
+}
+
+function selectNone(){
+  selectedPointIds.clear();
+  $$('#pointsBody .cb-col input[type="checkbox"]').forEach(cb=>{cb.checked=false});
+  $$('#pointsBody .selected-row').forEach(tr=>tr.classList.remove('selected-row'));
+  updateSelectToolbar();
+  updateSelectAllCheckbox();
+}
+
+function updateSelectAllCheckbox(){
+  const allCb=$('#selectAllCb');
+  if(!allCb)return;
+  const visible=$$('#pointsBody tr:not([style*="display: none"]) .cb-col input[type="checkbox"]');
+  const checked=[...visible].filter(cb=>cb.checked);
+  allCb.checked=visible.length>0&&checked.length===visible.length;
+  allCb.indeterminate=checked.length>0&&checked.length<visible.length;
+}
+
+function updateSelectToolbar(){
+  const toolbar=$('#selectToolbar');
+  if(!toolbar)return;
+  const count=selectedPointIds.size;
+  if(count===0){toolbar.classList.add('hidden');return}
+  toolbar.classList.remove('hidden');
+  $('#selectCount').textContent=count+' selected';
+  $('#genTdBtn').textContent='Generate TD ('+count+')';
+
+  // Build selection summary by type
+  const summary={};
+  currentDevicePoints.forEach(p=>{
+    if(!selectedPointIds.has(p.pointId))return;
+    const cat=p.brickCategory||p.objectType||'Other';
+    summary[cat]=(summary[cat]||0)+1;
+  });
+  const summaryEl=$('#selectSummary');
+  if(summaryEl){
+    summaryEl.innerHTML=Object.entries(summary).sort((a,b)=>b[1]-a[1]).slice(0,6)
+      .map(([cat,n])=>`<span class="ss-item">${n} ${esc(cat)}</span>`).join('');
+  }
+}
+
+async function generateTDFromSelected(){
+  if(selectedPointIds.size===0){toast('Select at least one point');return}
+  if(!currentDeviceId){toast('Select a device first');return}
+
+  switchTab('td',$$('.tab')[1]);
+  const el=$('#tdContent');
+  el.innerHTML='<div class="loading"><div class="spinner"></div>Generating TD for '+selectedPointIds.size+' selected points...</div>';
+
+  try{
+    const data=await api('/api/generate-td',{
+      method:'POST',headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({siteId:currentSiteId,deviceId:currentDeviceId,pointIds:[...selectedPointIds]})
+    });
+    const td=data.thingDescriptions[0];
+    if(!td){el.innerHTML='<div class="empty">No TD generated</div>';return}
+    window._lastTD=td;
+    el.innerHTML=`
+      <div style="margin-bottom:16px;display:flex;gap:10px;align-items:center;flex-wrap:wrap">
+        <button class="btn btn-success btn-sm" onclick="downloadTD()">Download JSON</button>
+        <button class="btn btn-outline btn-sm" onclick="switchTab('points',$$('.tab')[0])">Back to Points</button>
+        <span style="color:var(--text-muted);font-size:11px;margin-left:auto">${data.selectedPoints} points selected &middot; Device: ${esc(currentDeviceId)}</span>
+      </div>
+      <div class="json-viewer">${esc(JSON.stringify(td,null,2))}</div>
+    `;
+  }catch(e){el.innerHTML='<div class="empty"><p>'+esc(e.message)+'</p></div>'}
 }
 
 // ---- Edit ----
@@ -667,7 +994,7 @@ async function saveEdit(){
     await api('/api/update-inference',{method:'POST',headers:{'Content-Type':'application/json'},
       body:JSON.stringify({siteId:currentSiteId,pointId:editingPointId,correctedBrickUri:brickUri,correctedBrickLabel:brickLabel,correctedBrickCategory:'Manual',correctedHaystackMarkers:tags})});
     closeModal();toast('Correction saved');
-    if(currentDeviceId)selectDevice(currentDeviceId);else loadAllPoints();
+    refreshCurrentView();
   }catch(e){toast('Error: '+e.message)}
 }
 
@@ -732,7 +1059,7 @@ function showEnrichmentDiff(row, data){
     const tcClass=tc>=6?'tc-good':tc>=3?'tc-partial':'tc-low';
     const tmPct=Math.min(100,Math.round(tc*100/10));
 
-    let html='<div class="tag-preview" onmouseenter="showPopover(this)" onmouseleave="hidePopover(this)">';
+    let html='<div class="tag-preview">';
     // Show first 4 tags, highlight new ones
     const preview=allTags.slice(0,4);
     preview.forEach(t=>{
@@ -743,7 +1070,7 @@ function showEnrichmentDiff(row, data){
       }
     });
     const moreCount=allTags.length-preview.length+vals.length;
-    if(moreCount>0) html+=`<span class="tag-more">+${moreCount}</span>`;
+    if(moreCount>0) html+=`<span class="tag-more" onclick="togglePopover(this,event)">+${moreCount}</span>`;
     // Tag meter
     html+=`<div class="tag-meter"><div class="tag-meter-bar"><div class="tag-meter-fill ${tmClass}" style="width:${tmPct}%"></div></div><span class="tag-meter-count ${tcClass}">${tc}</span></div>`;
     // Delta indicator
@@ -798,7 +1125,7 @@ function dismissEnrichedRow(btn){
     // Refresh the row to normal state
     row.style.borderLeft='';
     row.style.background='';
-    if(currentDeviceId)selectDevice(currentDeviceId);else loadAllPoints();
+    refreshCurrentView();
   }
 }
 
@@ -809,50 +1136,79 @@ async function aiEnhanceAll(){
     const data=await api('/api/enhance-with-ai',{method:'POST',headers:{'Content-Type':'application/json'},
       body:JSON.stringify({siteId:currentSiteId,maxPoints:200,minConfidence:1.0})});
     toast(`Claude: ${data.pointsEnhanced}/${data.pointsProcessed} improved`);
-    if(currentDeviceId)selectDevice(currentDeviceId);else loadAllPoints();
+    refreshCurrentView();
   }catch(e){toast('Error: '+e.message)}
 }
 
-// ---- All Points ----
-let allSearch='',allConf='';
-async function loadAllPoints(conf,search){
-  $$('.dev-item').forEach(i=>i.classList.remove('selected'));
-  currentDeviceId=null;
-  allConf=conf||allConf||'';allSearch=search??allSearch??'';
-  $('#contentArea').innerHTML='<div class="loading"><div class="spinner"></div>Loading all points...</div>';
+// ---- All Points (server-side sort/filter/paginate) ----
+async function loadAllPoints(append=false){
+  if(!append){
+    $$('.dev-item').forEach(i=>i.classList.remove('selected'));
+    currentDeviceId=null;
+    $('#contentArea').innerHTML='<div class="loading"><div class="spinner"></div>Loading points...</div>';
+  }
   try{
-    const p=new URLSearchParams({siteId:currentSiteId,limit:'1000'});
-    if(allConf)p.set('confidence',allConf);if(allSearch)p.set('search',allSearch);
-    const data=await api('/api/all-points?'+p);
-    renderAllPointsView(data);
-  }catch(e){$('#contentArea').innerHTML='<div class="empty"><div class="empty-icon">&#10060;</div><p>'+esc(e.message)+'</p></div>'}
+    const data=await api('/api/all-points?'+buildQueryParams());
+    pageState.total=data.total;
+    pageState.hasMore=data.hasMore;
+    if(append){
+      currentDevicePoints=currentDevicePoints.concat(data.points);
+      appendRows(data.points,true);
+      updatePageInfo();
+    }else{
+      currentDevicePoints=data.points;
+      renderAllPointsView(data);
+    }
+  }catch(e){if(!append)$('#contentArea').innerHTML='<div class="empty"><div class="empty-icon">&#10060;</div><p>'+esc(e.message)+'</p></div>'}
 }
 
 function renderAllPointsView(data){
   const s=data.summary;
-  currentDevicePoints=data.points;
   $('#contentArea').innerHTML=`
-    <h3 style="margin-bottom:16px;font-size:15px">All Points <span style="color:var(--text-muted);font-weight:400">(${data.total.toLocaleString()} supported)</span></h3>
+    <h3 style="margin-bottom:16px;font-size:15px">All Points <span style="color:var(--text-muted);font-weight:400">(${data.total.toLocaleString()} matched)</span></h3>
     ${renderStats(s)}
     <div class="filters">
-      <input type="text" class="filter-input" id="searchInput" placeholder="Search all points..." value="${esc(allSearch)}" oninput="filterTable()">
-      <select class="filter-select" id="confFilter" onchange="filterTable()">
-        <option value="">All Levels</option><option value="HIGH">HIGH</option><option value="MEDIUM">MEDIUM</option><option value="LOW">LOW</option><option value="NO_MATCH">NO_MATCH</option>
+      <input type="text" class="filter-input" id="searchInput" placeholder="Search all points..." value="${esc(filterState.search)}" oninput="onSearchInput()">
+      <select class="filter-select" id="confFilter" onchange="onFilter()">
+        <option value="">All Levels</option><option value="HIGH" ${filterState.confidence==='HIGH'?'selected':''}>HIGH</option><option value="MEDIUM" ${filterState.confidence==='MEDIUM'?'selected':''}>MEDIUM</option><option value="LOW" ${filterState.confidence==='LOW'?'selected':''}>LOW</option><option value="NO_MATCH" ${filterState.confidence==='NO_MATCH'?'selected':''}>NO_MATCH</option>
       </select>
-      <span class="count-label" id="countLabel">${data.points.length} of ${data.total}</span>
+      <select class="filter-select" id="sourceFilter" onchange="onFilter()">
+        <option value="">All Sources</option><option value="pattern" ${filterState.source==='pattern'?'selected':''}>Pattern</option><option value="ai-ollama" ${filterState.source==='ai-ollama'?'selected':''}>Ollama</option><option value="ai-claude" ${filterState.source==='ai-claude'?'selected':''}>Claude</option><option value="manual" ${filterState.source==='manual'?'selected':''}>Manual</option><option value="unit-fallback" ${filterState.source==='unit-fallback'?'selected':''}>Unit</option>
+      </select>
+      <span class="count-label" id="pageInfo">Showing ${data.points.length} of ${data.total}</span>
     </div>
     <div class="table-wrap">
       <table><thead><tr>
-        <th>Device</th><th>Point Name</th><th>Type</th><th>Units</th>
-        <th>BRICK Class</th><th>Tags</th><th>Confidence</th><th>Source</th><th style="width:100px">Actions</th>
+        ${sortHeader('Device','device')}<th>Object ID</th>${sortHeader('Point Name','name')}${sortHeader('Type','type')}${sortHeader('Units','units')}
+        ${sortHeader('BRICK Class','brick')}${sortHeader('Tags','tags')}${sortHeader('Confidence','confidence')}${sortHeader('Source','source')}<th style="width:100px">Actions</th>
       </tr></thead><tbody id="pointsBody">${data.points.map(p=>renderPointRow(p,true)).join('')}
       </tbody></table>
     </div>
+    ${data.hasMore?`<div class="load-more"><button class="btn btn-outline" onclick="loadMoreRows()">Load More</button><div class="page-info" id="loadMoreInfo">Showing ${data.points.length} of ${data.total}</div></div>`:''}
     <div class="actions">
       <button class="btn btn-claude btn-sm" onclick="aiEnhanceAll()">Claude AI Enhance All</button>
       <button class="btn btn-outline btn-sm" onclick="exportCSV()">Export CSV</button>
     </div>
   `;
+  initPopovers();
+}
+
+function appendRows(points,showDevice){
+  const body=$('#pointsBody');
+  if(!body)return;
+  body.insertAdjacentHTML('beforeend',points.map(p=>renderPointRow(p,showDevice)).join(''));
+  initPopovers();
+}
+
+function updatePageInfo(){
+  const shown=$$('#pointsBody tr').length;
+  const info=$('#pageInfo');if(info)info.textContent=`Showing ${shown} of ${pageState.total}`;
+  const loadInfo=$('#loadMoreInfo');if(loadInfo)loadInfo.textContent=`Showing ${shown} of ${pageState.total}`;
+  // Hide/show load more button
+  const loadMoreDiv=document.querySelector('.load-more');
+  if(loadMoreDiv){
+    if(pageState.hasMore){loadMoreDiv.style.display=''}else{loadMoreDiv.style.display='none'}
+  }
 }
 
 // ---- TD ----
@@ -880,8 +1236,8 @@ function downloadTD(){
 // ---- CSV ----
 function exportCSV(){
   if(!currentDevicePoints.length){toast('No points');return}
-  const h=['Name','Type','Units','EquipRef','BRICK Category','BRICK Class','BRICK URI','Haystack Markers','Haystack Values','Tag Count','Confidence','Level','Source','Flagged'];
-  const rows=currentDevicePoints.map(p=>[p.objectName,p.objectType,p.units,p.equipmentRef||'',p.brickCategory||'',p.brickClass||'',p.brickUri||'',(p.haystackTags||[]).join(';'),Object.entries(p.haystackValues||{}).map(([k,v])=>k+'='+v).join(';'),p.tagCount||0,p.confidence,p.confidenceLevel,p.source,p.flaggedForReview?'yes':'no']);
+  const h=['Device ID','Object ID','Name','Type','Units','EquipRef','BRICK Category','BRICK Class','BRICK URI','Haystack Markers','Haystack Values','Tag Count','Confidence','Level','Source','Flagged'];
+  const rows=currentDevicePoints.map(p=>[p.deviceId||'',p.objectId||'',p.objectName,p.objectType,p.units,p.equipmentRef||'',p.brickCategory||'',p.brickClass||'',p.brickUri||'',(p.haystackTags||[]).join(';'),Object.entries(p.haystackValues||{}).map(([k,v])=>k+'='+v).join(';'),p.tagCount||0,p.confidence,p.confidenceLevel,p.source,p.flaggedForReview?'yes':'no']);
   const csv=[h,...rows].map(r=>r.map(c=>'"'+String(c).replace(/"/g,'""')+'"').join(',')).join('\n');
   const b=new Blob([csv],{type:'text/csv'});
   const a=document.createElement('a');a.href=URL.createObjectURL(b);
